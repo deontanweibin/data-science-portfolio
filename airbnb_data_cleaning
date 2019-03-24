@@ -2,6 +2,10 @@
 #airbnb data
 #data source:https://www.kaggle.com/c/airbnb-recruiting-new-user-bookings/data
 
+#install.packages("mice", repos="http://cran.us.r-project.org")
+#install.packages("Hmisc", repos="http://cran.us.r-project.org")
+library(Hmisc)
+library(mice) #for missing data imputation
 library(dplyr)
 library(sqldf)
 library(lubridate)
@@ -9,6 +13,8 @@ library(lubridate)
 train <- read.csv("C:\\Users\\P1318124\\Desktop\\BA Projects\\Kaggle\\Data Cleaning Projects\\AirBnB\\train_users_2.csv",header=TRUE)
 
 #explore dataset
+#find class of all columns in train
+sapply(train,class)
 class(train)
 str(train)
 summary(train)
@@ -56,6 +62,8 @@ class(train_2$new_timestamp_first_active) #a character type
 train_2$new_timestamp_first_active_clean <- as.POSIXct(train_2$new_timestamp_first_active)
 head(train_2)
 class(train_2$new_timestamp_first_active_clean)
+sapply(train_2,class)
+
 
 #gender exploration
 gender_counts <- table(train_2$gender)
@@ -63,4 +71,57 @@ barplot(gender_counts)
 
 #date_account_created exploration
 plot(train_2$date_account_created)
+
+#age exploration
+age_counts <- table(train_2$age)
+length(train_2$age[which(is.na(train_2$age))])
+sd(train_2$age,na.rm=TRUE)
+hist(train_2$age,breaks=8000)
+min(train_2$age,na.rm=TRUE)
+max(train_2$age,na.rm=TRUE)
+median(train_2$age,na.rm=TRUE)
+mean(train_2$age,na.rm=TRUE)
+#id column in train_2 is unique
+length(unique(train_2$id)) #same length as nrows(train_2)
+
+#determine if missing age numbers is due to Missing at Random (MAR)
+#or due to Missing not at Random (MNAR)
+
+na_age_train_2 <- train_2[which(is.na(train_2$age)),]
+colnames(train_2)
+gender_counts2 <- table(na_age_train_2$gender)
+barplot(gender_counts2) #most mssing age from unknown gender
+plot(na_age_train_2$date_account_created)
+country_counts <- table(na_age_train_2$country_destination)
+barplot(country_counts) #most mssing age from unknown gender #mostly NDF, followed by US
+
+#basic numeric imputation model
+#imputation of the median
+train_2$age2 <- impute(train_2$age, fun= mean)
+train_2$age3 <- impute(train_2$age, fun= median)
+head(train_2[which(is.na(train_2$age)),])
+head(is.imputed(train_2$age2))
+head(is.imputed(train_2$age3))
+train_2$age3 <- as.numeric(train_2$age3)
+
+boxplot(train_2$age3)
+length(boxplot.stats(train_2$age3)$out)
+head(boxplot.stats(train_2$age3))
+dim(boxplot.stats(train_2$age3))
+
+
+length(train_2$age3[which(train_2$age3>2000)])
+length(train_2$age3[which(train_2$age3<5)])
+length(train_2$age3[which(train_2$age3>100)])
+
+qnt <- quantile(train_2$age3,probs=c(0.25,0.75))
+caps <- quantile(train_2$age3, probs=c(0.05,0.95))
+H <- 1.5*IQR(train_2$age3)
+train_2$age3[train_2$age3 < (qnt[1] - H)] <- caps[1]
+train_2$age3[train_2$age3 > (qnt[2] + H)] <- caps[2]
+length(train_2$age3[which(train_2$age3<18)])
+hist(train_2$age3)
+
+
+
 
