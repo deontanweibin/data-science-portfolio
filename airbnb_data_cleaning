@@ -1,0 +1,66 @@
+#data cleaning project
+#airbnb data
+#data source:https://www.kaggle.com/c/airbnb-recruiting-new-user-bookings/data
+
+library(dplyr)
+library(sqldf)
+library(lubridate)
+
+train <- read.csv("C:\\Users\\P1318124\\Desktop\\BA Projects\\Kaggle\\Data Cleaning Projects\\AirBnB\\train_users_2.csv",header=TRUE)
+
+#explore dataset
+class(train)
+str(train)
+summary(train)
+dim(train)
+colnames(train)
+head(train)
+
+#dealing with dates timestamp
+class(train$date_account_created)
+head(month(train$date_account_created))
+
+head(train$timestamp_first_active)
+head(as.character(train$timestamp_first_active))
+
+#split timestamp_first_active column into date timestamp columns
+train_2 <- transform(train, Year = substr(timestamp_first_active,1,4), Month = substr(timestamp_first_active,5,6), 
+Day = substr(timestamp_first_active,7,8), Hour = substr(timestamp_first_active,9,10),
+Minutes = substr(timestamp_first_active,11,12), Seconds = substr(timestamp_first_active,13,14))
+head(train_2)
+
+#verify validity of splitted columns
+max_min <- function(x) {
+print(max(as.numeric(as.character(x))))
+print(min(as.numeric(as.character(x))))
+}
+
+max_min(train_2$Year)
+max_min(train_2$Month)
+max_min(train_2$Day)
+max_min(train_2$Hour)
+max_min(train_2$Minutes)
+max_min(train_2$Seconds)
+
+#concatenate the date timestamp columns
+train_2$timestamp_first_active_2 <- paste(train_2$Year, train_2$Month, train_2$Day, sep="-")
+train_2$timestamp_first_active_2time <- paste(train_2$Hour, train_2$Minutes, train_2$Seconds, sep=":")
+train_2$new_timestamp_first_active <- paste(train_2$timestamp_first_active_2,train_2$timestamp_first_active_2time,sep=" ") 
+head(train_2)
+
+class(train_2$new_timestamp_first_active) #a character type
+
+#convert new_timestamp_first_active column into date time format class
+#do not use as.Date to convert into date type as will lose timestamp portion of column
+#hence use as.POSIXct which preserves timestamp portion of column
+train_2$new_timestamp_first_active_clean <- as.POSIXct(train_2$new_timestamp_first_active)
+head(train_2)
+class(train_2$new_timestamp_first_active_clean)
+
+#gender exploration
+gender_counts <- table(train_2$gender)
+barplot(gender_counts)
+
+#date_account_created exploration
+plot(train_2$date_account_created)
+
