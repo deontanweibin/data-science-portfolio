@@ -1,0 +1,139 @@
+#install.packages("arulesViz", repos="http://cran.us.r-project.org")
+#install.packages("pracma", repos="http://cran.us.r-project.org")
+library(pracma)
+library(apriori)
+library(arulesViz)
+library(arules)
+library(sqldf)
+library(dplyr)
+library(readxl)
+library(xlsx)
+library(tidyr)
+library(data.table)
+
+
+
+#data(“Groceries”)
+data <- read_excel("C:\\Users\\P1318124\\Desktop\\Giftany\\SOG_weekly_breakdown_v2.xlsx",1)
+
+head(data)
+data <- as.data.frame(data)
+
+colnames(data)[12] <- 'MSISDN2'
+
+
+acct <- sqldf("SELECT MSISDN2, Giftcards FROM data")
+
+acct <- acct %>%
+distinct(MSISDN2, Giftcards)
+
+
+acct$id <- rep(1:nrow(acct))
+row.names(acct) <- acct$id
+
+acct_rev <- acct %>%
+group_by(MSISDN2) %>%
+arrange(Giftcards) %>%
+summarise(items = paste(Giftcards, collapse=",")) #, times = length(items)) %>%
+#arrange(desc(times),items)
+
+acct_rev <- as.data.frame(acct_rev)
+
+txns <- acct_rev[,-c(1)]
+txns$id <- rep(1:nrow(txns))
+
+txns <- as.data.frame(txns)
+
+row.names(txns) <- txns$id
+txns_rev <- as.data.frame(txns[,-c(2)])
+colnames(txns_rev)[1] <- 'items'
+head(txns_rev,n=20)
+row.names(txns) <- NULLL
+
+
+#convert txns_rev into transactions class
+transactional_data <- as(txns_rev, "transactions")
+
+inspect(head(transactional_data,5))
+size(head(transactional_data))
+
+
+acct$id <- rep(1:nrow(acct))
+row.names(acct) <- acct$id
+
+
+acct_sep <- separate(acct_rev, 'items', paste("items", 1:15, sep="_"), sep=",", extra="drop")
+length(acct_sep$items_15[which(is.na(acct_sep$items_15))])
+acct_sep[which(!is.na(acct_sep$items_15)),]
+
+acct_sep[,2] <- as.factor(acct_sep[,2])
+acct_sep[,3] <- as.factor(acct_sep[,3])
+acct_sep[,4] <- as.factor(acct_sep[,4])
+acct_sep[,5] <- as.factor(acct_sep[,5])
+acct_sep[,6] <- as.factor(acct_sep[,6])
+acct_sep[,7] <- as.factor(acct_sep[,7])
+acct_sep[,8] <- as.factor(acct_sep[,8])
+acct_sep[,9] <- as.factor(acct_sep[,9])
+acct_sep[,10] <- as.factor(acct_sep[,10])
+acct_sep[,11] <- as.factor(acct_sep[,11])
+acct_sep[,12] <- as.factor(acct_sep[,12])
+acct_sep[,13] <- as.factor(acct_sep[,13])
+acct_sep[,14] <- as.factor(acct_sep[,14])
+acct_sep[,15] <- as.factor(acct_sep[,15])
+acct_sep[,16] <- as.factor(acct_sep[,16])
+
+row.names(acct_sep) <- acct_sep[,1]
+acct_sep <- acct_sep[,-c(1)]
+
+#convert acct_sep into transactions class
+acct_txns <- as(acct_sep, "transactions")
+
+
+frequentItems <- eclat (acct_txns, parameter = list(supp = 0.001,minlen = 2, maxlen = 15))
+inspect(frequentItems)
+
+#put giftcards as column names
+gc <- as.data.frame(data$Giftcards)
+colnames(gc) <- 'Giftcards'
+gc_rev <- gc %>%
+arrange(Giftcards) %>%
+distinct(Giftcards)
+
+gct <- as.data.frame(t(gc_rev))
+colnames(gct) <- unlist(gct[1,])
+
+#create all zero matric
+init_mat <- repmat(0,2148,48)
+colnames(init_mat) <- colnames(gct)
+head(init_mat)
+
+#merge acct_rev with init_mat
+acct_init <- cbind(acct_rev, init_mat)
+head(acct_init)
+
+acct_init2 <- acct_init
+
+for(j in 3:50) {
+for(i in 1:2148) {
+x <- colnames(acct_init2)[j]
+acct_init2[i,j] <- ifelse(acct_init2[i,2] %like% x, x , NA)
+}
+}
+
+for(j in 3:50){
+acct_init2[,j] <- as.factor(acct_init2[,j])
+}
+
+#convert to transactions class
+row.names(acct_init2) <- acct_init2[,1]
+acct_init3 <- acct_init2[,-c(1,2)]
+
+#convert acct_sep into transactions class
+acct_txns2 <- as(acct_init3, "transactions")
+
+frequentItems2 <- eclat (acct_txns2, parameter = list(supp = 0.1,minlen = 1, maxlen = ))
+inspect(frequentItems2)
+
+itemFrequencyPlot(acct_txns, topN=20, type="absolute", main="Item Frequency")
+
+
