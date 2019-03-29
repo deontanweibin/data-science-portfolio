@@ -1,5 +1,8 @@
 #install.packages("arulesViz", repos="http://cran.us.r-project.org")
 #install.packages("pracma", repos="http://cran.us.r-project.org")
+#install.packages("gsubfn", repos="http://cran.us.r-project.org")
+#install.packages("tm", repos="http://cran.us.r-project.org")
+library(gsubfn)
 library(pracma)
 library(apriori)
 library(arulesViz)
@@ -10,7 +13,8 @@ library(readxl)
 library(xlsx)
 library(tidyr)
 library(data.table)
-
+library(stringr)
+library(tm)
 
 
 #data(“Groceries”)
@@ -135,5 +139,47 @@ frequentItems2 <- eclat (acct_txns2, parameter = list(supp = 0.1,minlen = 1, max
 inspect(frequentItems2)
 
 itemFrequencyPlot(acct_txns, topN=20, type="absolute", main="Item Frequency")
+
+
+cols <- colnames(acct_init2)[3:50]
+
+
+acct_init2$y <- apply(acct_init2[,cols],1,paste, collapse = ",")
+
+acct_init2$y2 <- gsub("NA","",acct_init2$y)
+
+acct_init2$y3 <- sapply(strsplit(acct_init2$y,","), function(x) rle(x)$value)
+
+paste(unique(acct_init2$y[1]), collapse = ' ')
+
+stop <- readLines("C:\\Users\\P1318124\\Desktop\\BA Projects\\Giftany_BA\\Apriori\\stopwords_giftany_apriori.txt")
+stop2 <- readLines("C:\\Users\\P1318124\\Desktop\\BA Projects\\Giftany_BA\\Apriori\\stopwords_giftany_apriori - Copy.txt")
+stop3 <- readLines("C:\\Users\\P1318124\\Desktop\\BA Projects\\Giftany_BA\\Apriori\\stopwords_giftany_apriori - Copy - Copy.txt")
+
+new2 <- removeWords(acct_init2$y,stop)
+new2 <- removeWords(new2,stop2)
+
+acct_init2$y6 <- new2
+
+
+head(acct_init2$y6)
+
+acct_init2$y7 <- paste(acct_init2$y6,",xyz",sep="")
+head(acct_init2$y7)
+new3 <- removeWords(acct_init2$y7,stop3)
+acct_init2$y8 <- new3
+head(acct_init2$y8,10)
+
+acct_init2$final_items <- acct_init2$y8
+
+acct_init2_items <- as.data.frame(acct_init2$final_items)
+
+#convert acct_init2_items into transactions class
+acct_init2_txns <- as(acct_init2_items, "transactions")
+
+library(arules)
+library(arulesViz)
+arules::inspect(head(acct_init2_txns,10))
+arules::size(head(acct_init2_txns,10))
 
 
