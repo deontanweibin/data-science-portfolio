@@ -182,4 +182,62 @@ library(arulesViz)
 arules::inspect(head(acct_init2_txns,10))
 arules::size(head(acct_init2_txns,10))
 
+colnames(acct_init2)
+
+class(acct_init2$Adidas)
+
+acct_init4 <- sapply(acct_init2,as.character)
+acct_init4[is.na(acct_init4)] <- ""
+head(acct_init4)
+
+acct_init5 <- sapply(as.data.frame(acct_init4),as.factor)
+acct_init5 <- as.data.frame(acct_init5)
+head(acct_init5)
+class(acct_init5$Adidas)
+
+acct_init6 <- acct_init5[,-c(1,2,51:61)]
+head(acct_init6)
+
+#convert acct_init6 into transactions class
+acct_init6_txns <- as(acct_init6, "transactions")
+arules::inspect(head(acct_init6_txns,10))
+arules::size(head(acct_init6_txns,10))
+
+
+#acct_init6$rowid <- rep(1:nrow(acct_init6))
+
+#acct_init7 <- acct_init6 %>%
+#group_by(rowid) %>%
+#arrange(Giftcards) %>%
+#summarise(items = paste(Giftcards, collapse=",")) #, times = length(items)) %>%
+#arrange(desc(times),items)
+
+acct_init6$piv <- apply( acct_init6[ ,1:48  ] , 1 , paste , collapse = "," )
+head(acct_init6,10)
+
+#acct_init8 <- as.data.frame(sapply(acct_init2,ifelse(is.na(acct_init2),'NA','TRUE')))
+
+#acct_init8 <- acct_init2
+acct_init8 <- acct_init2[,-c(1,2,51:61)]
+
+#acct_init8[is.na(acct_init2)] <- 0
+#acct_init8[!is.na(acct_init2)] <- 'TRUE'
+for(j in 1:48){
+acct_init8[,j] <- ifelse(is.na(acct_init8[,j]), 'FALSE','TRUE')
+}
+
+head(acct_init8,10)
+
+acct_init8_txns <- as(acct_init8,"transactions")
+
+acct_init9 <- as.data.frame(sapply(acct_init8, as.logical))
+head(acct_init9,10)
+
+acct_init9_txns <- as(acct_init9,"transactions")
+arules::inspect(head(acct_init9_txns,10))
+arules::size(head(acct_init9_txns,10))
+
+
+#acct_init9 is ready to convert into transactions data type
+
 
