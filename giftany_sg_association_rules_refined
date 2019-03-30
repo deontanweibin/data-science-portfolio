@@ -72,7 +72,7 @@ head(acct_init)
 ##Show NA if product is not bought in each column, for every row
 acct_init2 <- acct_init
 
-###User for loop since acct_init2 is not large
+###Use for loop since acct_init2 is not large
 for(j in 3:50) {
 for(i in 1:2148) {
 x <- colnames(acct_init2)[j]
