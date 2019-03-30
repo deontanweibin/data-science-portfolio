@@ -1,0 +1,164 @@
+#Find association rules for an online retailer
+#I will show you how I converted the dataset from a dataframe to "transactions" class 
+
+#Load dataset
+data <- read_excel("C:\\Users\\P1318124\\Desktop\\Giftany\\giftany.xlsx",1)
+
+#Explore dataset
+head(data) #from here it appears that dataset is tibble class, hence need to convert dataset into dataframe
+
+##Convert dataset from tibble to a dataframe
+data <- as.data.frame(data)
+
+##Column names for dataset
+colnames(data) #it appears that there are duplicate column names with slightly different data being stored in their columns in the dataset
+
+###Rename one of the duplicated column name of dataset, hence ending up with unique column names for dataset
+colnames(data)[12] <- 'MSISDN2'
+
+
+#Selecting the data needed from dataset for association rules analysis using library(sqldf)
+acct <- sqldf("SELECT MSISDN2, Giftcards FROM data")
+
+##Only select unique products (Giftcards) purchases' combination per user (MSISDN2, i.e. the user's phone number)
+###Use dplyr
+acct <- acct %>%
+distinct(MSISDN2, Giftcards)
+
+##Create IDs to signify a pseudo-transaction id
+acct$id <- rep(1:nrow(acct))
+row.names(acct) <- acct$id
+
+##Combine each user's purchases (Giftcards)
+###Arrange products (Giftcards) in alphabetical order using dplyr::arrange() function
+###Paste all the different products (Giftcards) bought per user using the paste() function
+acct_rev <- acct %>%
+group_by(MSISDN2) %>%
+arrange(Giftcards) %>%
+summarise(items = paste(Giftcards, collapse=","))
+
+###Convert acct_rev into a dataframe
+acct_rev <- as.data.frame(acct_rev)
+
+acct$id <- rep(1:nrow(acct))
+row.names(acct) <- acct$id
+
+#Create wide format matrix for products (Giftcards)
+##Put products (Giftcards) as column names
+gc <- as.data.frame(data$Giftcards)
+colnames(gc) <- 'Giftcards'
+
+###Select unique products (Giftcards) from dataset using dplyr::distinct()
+gc_rev <- gc %>%
+arrange(Giftcards) %>%
+distinct(Giftcards)
+
+###Transpose products (Giftcards) matrix, i.e. gc_rev
+gct <- as.data.frame(t(gc_rev))
+###Assign products (Giftcards) i.e. gct, as column names of gct
+colnames(gct) <- unlist(gct[1,])
+
+###Create all-zero matrix with same number of rows as acct_rev i.e. 2148, with 48 columns, one column per product (Giftcard)
+init_mat <- repmat(0,2148,48)
+
+###Put column names for gct as column names for the all-zero matrix created i.e. init_mat
+colnames(init_mat) <- colnames(gct)
+head(init_mat)
+
+###Combine acct_rev with init_mat via cbind() function
+acct_init <- cbind(acct_rev, init_mat)
+head(acct_init)
+
+##Show NA if product is not bought in each column, for every row
+acct_init2 <- acct_init
+
+###User for loop since acct_init2 is not large
+for(j in 3:50) {
+for(i in 1:2148) {
+x <- colnames(acct_init2)[j]
+acct_init2[i,j] <- ifelse(acct_init2[i,2] %like% x, x , NA)
+}
+}
+
+###Convert every product (Giftcard) column from character to a factor class for association rules to be run
+for(j in 3:50){
+acct_init2[,j] <- as.factor(acct_init2[,j])
+}
+
+#convert to transactions class
+row.names(acct_init2) <- acct_init2[,1]
+
+##Create new dataset acct_init8 to only store product (Giftcard) columns from acct_init2
+acct_init8 <- acct_init2[,-c(1,2,51:61)]
+
+###Replace NA with FALSE, and other than NAs as TRUE in acct_init8
+for(j in 1:48){
+acct_init8[,j] <- ifelse(is.na(acct_init8[,j]), 'FALSE','TRUE')
+}
+
+head(acct_init8,10)
+
+##Create new dataset, acct_init9, to convert into "transactions" class
+###Convert each column in acct_ini8 to logical class using sapply() function, 
+###nested with as.data.frame, else will return a "matrix" class dataset
+acct_init9 <- as.data.frame(sapply(acct_init8, as.logical))
+head(acct_init9,10)
+
+##Convert acct_init9 into "transactions" class using arules 
+acct_init9_txns <- as(acct_init9,"transactions")
+###Inspect top 10 rows of acct_init9_txns using arules::inspect
+arules::inspect(head(acct_init9_txns,10))
+#
+     items                     transactionID
+[1]  {Razer}                   1            
+[2]  {My Melody Run}           2            
+[3]  {Mobike}                  3            
+[4]  {LAZADA}                  4            
+[5]  {Mobike}                  5            
+[6]  {LAZADA}                  6            
+[7]  {4Fingers,GrabTaxi,Klook} 7            
+[8]  {Cathay}                  8            
+[9]  {Best Denki}              9            
+[10] {GrabTaxi}                10       
+#
+
+###Find the number of diiferent items bought in each combination, i.e. row, of acct_init9_txns
+arules::size(head(acct_init9_txns,10))
+#
+[1] 1 1 1 1 1 1 3 1 1 1
+#
+
+##Find most frequent Giftcard purchased combinations
+frequentItems <- eclat (acct_init9_txns, parameter = list(supp = 0.01,minlen = 2, maxlen = 15))
+arules::inspect(frequentItems)
+
+##Do a barplot for top 50 combinations of Giftcard purchases
+itemFrequencyPlot(acct_init9_txns, topN=50, type="absolute", main="Item Frequency")
+
+##Return apriori rules with minlen = 1, i.e. all combinations of Giftcards purchased
+giftany_rules <- apriori(acct_init9_txns, parameter = list(support = 0.01, confidence = 0.05))
+
+##Find out combination of Giftcard purchases by confidence level, i.e. percentage of people who purchased Giftcard on LHS
+##also purchased Giftcard on the respective RHS
+arules::inspect(head(sort(giftany_rules,by = "confidence"),3))
+#
+    lhs         rhs        support    confidence lift     count
+#
+
+#Return apriori rules with minlen = 2, ie 2 or more different Giftcards purchased combination
+giftany_rules2 <- apriori(acct_init9_txns, parameter = list(support = 0.01, confidence = 0.05, minlen = 2))
+arules::inspect(head(sort(giftany_rules2,by = "confidence"),3))
+
+#summary of rules
+summary(giftany_rules)
+#plot rules
+topRules <- giftany_rules[1:20]
+plot(topRules)
+#graph plot
+plot(topRules,method="graph")
+#grouped plot
+plot(topRules, method="grouped")
+
+#end code
+
+
