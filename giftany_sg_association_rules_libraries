@@ -1,6 +1,6 @@
 #Install R version 3.5.x
 #Create association rules for an online retailer since Jan-2018
-#Install and load the libraries below to run the code in giftany_sg_association_rules
+#Install and load the libraries below to run the code in giftany_sg_association_rules_refined
 #Follow library installation method below for a seamless installation, while only changing the name "arulesViz" to other library names for future installation
 #install.packages("arulesViz", repos="http://cran.us.r-project.org")
 
