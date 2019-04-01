@@ -59,7 +59,7 @@ gct <- as.data.frame(t(gc_rev))
 colnames(gct) <- unlist(gct[1,])
 
 ###Create all-zero matrix with same number of rows as acct_rev i.e. 2148, with 48 columns, one column per product (Giftcard)
-init_mat <- repmat(0,2148,48)
+init_mat <- repmat(0,nrow(acct_rev),length(unique(data$Giftcards)))
 
 ###Put column names for gct as column names for the all-zero matrix created i.e. init_mat
 colnames(init_mat) <- colnames(gct)
@@ -73,15 +73,15 @@ head(acct_init)
 acct_init2 <- acct_init
 
 ###Use for loop since acct_init2 is not large
-for(j in 3:50) {
-for(i in 1:2148) {
+for(j in 3:length(unique(data$Giftcards))) {
+for(i in 1:nrow(acct_rev)) {
 x <- colnames(acct_init2)[j]
 acct_init2[i,j] <- ifelse(acct_init2[i,2] %like% x, x , NA)
 }
 }
 
 ###Convert every product (Giftcard) column from character to a factor class for association rules to be run
-for(j in 3:50){
+for(j in 3:length(unique(data$Giftcards))){
 acct_init2[,j] <- as.factor(acct_init2[,j])
 }
 
@@ -89,10 +89,10 @@ acct_init2[,j] <- as.factor(acct_init2[,j])
 row.names(acct_init2) <- acct_init2[,1]
 
 ##Create new dataset acct_init8 to only store product (Giftcard) columns from acct_init2
-acct_init8 <- acct_init2[,-c(1,2,51:61)]
+acct_init8 <- acct_init2[,c(3:length(unique(data$Giftcards))]
 
 ###Replace NA with FALSE, and other than NAs as TRUE in acct_init8
-for(j in 1:48){
+for(j in 1:length(unique(data$Giftcards))){
 acct_init8[,j] <- ifelse(is.na(acct_init8[,j]), 'FALSE','TRUE')
 }
 
@@ -144,6 +144,9 @@ arules::inspect(head(sort(giftany_rules,by = "confidence"),3))
 #
     lhs         rhs        support    confidence lift     count
 #
+#Number of rules in giftany_rules
+c <- nrow(arules::inspect(sort(giftany_rules,by = "confidence")))
+
 
 #Return apriori rules with minlen = 2, ie 2 or more different Giftcards purchased combination
 giftany_rules2 <- apriori(acct_init9_txns, parameter = list(support = 0.01, confidence = 0.05, minlen = 2))
@@ -152,7 +155,7 @@ arules::inspect(head(sort(giftany_rules2,by = "confidence"),3))
 #summary of rules
 summary(giftany_rules)
 #plot rules
-topRules <- giftany_rules[1:20]
+topRules <- giftany_rules[1:c]
 plot(topRules)
 #graph plot
 plot(topRules,method="graph")
