@@ -1,0 +1,119 @@
+#install.packages("magittr", repos="http://cran.us.r-project.org")
+#install.packages("ggfortify", repos="http://cran.us.r-project.org")
+#install.packages("FitAR", repos="http://cran.us.r-project.org")
+#install.packages("tidyquant", repos="http://cran.us.r-project.org")
+#install.packages("timetk", repos="http://cran.us.r-project.org")
+#install.packages("broom", repos="http://cran.us.r-project.org")
+
+library(FitAR)
+library(ggplot2)
+library(magittr)
+library(lubridate)
+library(stringr)
+library(dplyr)
+library(tidyr)
+library(tidyquant)
+library(timetk)
+library(broom)
+library(forecast)
+
+
+
+
+
+
+data <- read.csv("C:\\Users\\P1318124\\Desktop\\BA Projects\\Remittance_BA\\Remittance_Time_Series\\total_remit_sum_date.csv",header=TRUE)
+head(data)
+class(data)
+str(data)
+summary(data)
+colnames(data)
+colnames(data)[1] <- 'date'
+colnames(data)[2] <- 'tv'
+
+#separate dollar $ sign from numeric value
+#tab <- data.frame(x=data$tv)
+#tab_2 <- tab %>% separate(x,c("sign","tv_2"),sep="\\$")
+
+#data_2 <- data %>%
+#str_replace("\\$","")
+
+#gsub works
+#data$tv_2 = as.numeric(gsub("\\$", "", data$tv))
+
+
+data_tv <- separate(data,tv,into = c("dollar sign","tv2"),sep="\\$")
+
+data_tv[,1] <- ymd_hms(data_tv[,1])
+#class(data_tv[,1])
+#head(data_tv[,1])
+head(data_tv)
+
+
+data_rev <- data_tv[,-c(2)]
+data_rev$tv2 <- as.numeric(data_rev$tv2)
+head(data_rev)
+
+
+nrow(data_rev)
+nrow(data_rev)/7 
+floor(nrow(data_rev)/7)
+y <- 7*floor(nrow(data_rev)/7)
+data_rev2 <- data_rev[1:y,]
+
+
+###################################
+#Select date and tv2
+remit <- data_rev2 %>%
+select(date,tv2) %>%
+rename(tv = tv2)
+
+
+remit_ts <- ts(remit[,2], frequency = 7)
+plot.ts(remit_ts)
+auto.arima(remit_ts)
+acf(remit_ts) #lag 2
+pacf(remit_ts) #lag 1
+
+#Test different arima models
+model1 <- auto.arima(remit_ts)
+predict(model1,n.ahead=5)
+
+fitARIMA1 <- arima(remit_ts, order = c(2,1,2), seasonal = list(order = c(1,0,0), period = 7), method = "ML")
+fitARIMA1
+
+predict(fitARIMA1, n.ahead=22)
+futurVal1 <- forecast(fitARIMA1,h=100, level=c(99.5)) #use forecast instead of forecast.Arima
+plot(futurVal1)
+
+#Test different arima models
+model2 <- auto.arima(remit_ts)
+predict(model2,n.ahead=5)
+
+fitARIMA2 <- arima(remit_ts, order = c(2,1,2), seasonal = list(order = c(1,1,1), period = 7), method = "ML")
+fitARIMA2
+
+predict(fitARIMA2, n.ahead=22)
+futurVal2 <- forecast(fitARIMA2,h=100, level=c(95)) #use forecast instead of forecast.Arima
+plot(futurVal2)
+
+#model fitArima2 fits well to data
+
+##different ts format
+remit_ts2 <- ts(remit[,2], frequency = 7, start=as.Date("2018-04-01"))
+str(remit_ts2)
+head(remit_ts2)
+
+###############
+
+library(zoo)
+remit_ts3 <- zooreg(remit[,2], start = ymd("2018-04-01"))
+time(remit_ts3)
+fitARIMA3 <- arima(remit_ts3, order = c(2,1,2), seasonal = list(order = c(1,1,1), period = 7), method = "ML")
+fitARIMA3
+fitARIMA3_pred <- predict(fitARIMA3, n.ahead=24)
+futurVal3 <- forecast(fitARIMA3,h=100, level=c(95)) #use forecast instead of forecast.Arima
+plot(futurVal3)
+
+
+## fitARIMA3 WORKS!#
