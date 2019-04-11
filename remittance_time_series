@@ -111,9 +111,24 @@ remit_ts3 <- zooreg(remit[,2], start = ymd("2018-04-01"))
 time(remit_ts3)
 fitARIMA3 <- arima(remit_ts3, order = c(2,1,2), seasonal = list(order = c(1,1,1), period = 7), method = "ML")
 fitARIMA3
-fitARIMA3_pred <- predict(fitARIMA3, n.ahead=24)
+
+######ADJUST n.ahead argument######
+
+fitARIMA3_pred <- predict(fitARIMA3, n.ahead= 30 - day(max(time(remit_ts3))))
 futurVal3 <- forecast(fitARIMA3,h=100, level=c(95)) #use forecast instead of forecast.Arima
 plot(futurVal3)
 
-
 ## fitARIMA3 WORKS!#
+
+head(fitARIMA3_pred)
+fitARIMA3_pred_df <- as.data.frame(fitARIMA3_pred)
+fitARIMA3_pred_df$date <- max(time(remit_ts3))
+
+for(i in 1:nrow(fitARIMA3_pred_df)){
+fitARIMA3_pred_df$date[i] <- max(time(remit_ts3)) + i
+}
+
+write.csv(fitARIMA3_pred_df,"C:\\Users\\P1318124\\Desktop\\Remittance\\apr_2019_fc.csv",row.names=FALSE)
+
+
+
