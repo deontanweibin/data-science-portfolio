@@ -1,0 +1,71 @@
+library(tidyverse)
+library(stringr)
+library(readxl)
+library(xlsx)
+
+data <- read_excel("C:\\Users\\P1318124\\Desktop\\BA Projects\\edX\\Data Wrangling with HarvardX\\G&T Results 2017-18 (Responses).xlsx",1)
+
+dim(data)
+str(data)
+class(data)
+summary(data)
+head(data)
+
+data <- as.data.frame(data)
+
+#interchange between OLSAT Verbal Score and NNAT Non Verbal Raw Score
+#dirty <- data$'OLSAT Verbal Score'
+dirty <- data$'NNAT Non Verbal Raw Score'
+dirty
+
+#detecting "/" 
+#using regex
+str_detect(dirty, "/")
+
+#str_view shows first match of each string
+pattern <- "/"
+str_view(dirty,pattern)
+
+#replace / followed by 2 digits with empty
+#dirty2 <- dirty %>% str_replace("/30","") #remove all inches symbols
+dirty2 <- dirty %>% str_replace("/48","") #remove all inches symbols
+
+#detecting values more than 30 (since max score is 30) fpr OLSAT
+#pattern <- "^[3-9]"
+
+#detecting values more than 48 (since max score is 48) for NNAT
+pattern <- "^[4-9]"
+
+str_detect(dirty2, pattern)
+str_view(dirty2,pattern)
+
+#convert other non-numerics into 0s
+#then deal with numbers more than 30.0 OLSAT, or 48.0 NNAT
+
+#detect strings with alphabets
+
+str_length(dirty2)>=15
+dirty2_v2 <- ifelse(str_length(dirty2) >= 15, "NA", dirty2)
+
+pattern1 <- "-"
+pattern2 <- "^\\**$"
+str_detect(dirty2_v2, pattern1)
+str_view(dirty2_v2,pattern1)
+str_detect(dirty2_v2, pattern2)
+str_view(dirty2_v2,pattern2)
+
+dirty3 <- dirty2_v2 %>% 
+str_replace(pattern1,"NA") %>% #remove all symbols and alphabets and replace with NA
+str_replace(pattern2,"NA")
+
+#deal with numbers more than 30 OLSAT, or 48 NNAT
+dirty4 <- as.numeric(dirty3)
+#dirty4 <- ifelse(dirty4>30, (dirty4*30)/100, dirty4)
+dirty4 <- ifelse(dirty4>48, (dirty4*48)/100, dirty4)
+dirty3
+dirty4
+
+#data$'OLSAT Verbal Score Rev' <- dirty4
+data$'NNAT Non Verbal Raw Score Rev' <- dirty4
+
+
