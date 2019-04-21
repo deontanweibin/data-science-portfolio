@@ -149,3 +149,77 @@ table(data2$HOME_STATE)
 
 #END OF STRING CLEANING FOR US STATE CODE
 
+#START OF EXPLORATORY DATA ANALYSIS (EDA) in R 3.5.3 ("Great Truth")
+install.packages("DataExplorer", repos="http://cran.us.r-project.org")
+library(DataExplorer)
+library(dplyr)
+library(tidyverse)
+library(stringr)
+
+#data <- read.csv("C:\\Users\\P1318124\\Desktop\\BA Projects\\edX\\Data Wrangling with HarvardX\\KoreanConflict.csv",na.strings=c("","NA"), stringsAsFactors=FALSE, header=TRUE)
+#Use data2 from stringR analysis
+library(DataExplorer)
+
+#check dimension
+plot_str(data2) #all are characters including BIRTH_YEAR
+
+#check missing values
+plot_missing(data2)#deal with mising values of FATALITY_YEAR via FATALLITY_DATE
+#as lower occurrence of missing values in FATALLITY_DATE (0.01%) vs FATALLITY_YEAR (5.26%)
+table(data2$FATALITY_DATE)
+head(data2$FATALITY_DATE)
+#remove K, KOREA and KOREAN WAR entries (rows) from FATALITY_DATE (since 10% of rows affected)
+data2 <- data2[which(data2$FATALITY_DATE != "K"),]
+data2 <- data2[which(data2$FATALITY_DATE != "KOREA"),]
+data2 <- data2[which(data2$FATALITY_DATE != "KOREAN WAR"),]
+data2 <- data2[which(!is.na(data2$FATALITY_DATE)),]
+
+#extract first four digits of FATALITY_DATE and put as FATALITY_YEAR_REV
+data2$FATALITY_YEAR_REV <- substr(data2$FATALITY_DATE,1,4)
+#convert to numeric
+data2$FATALITY_YEAR_REV <- as.numeric(data2$FATALITY_YEAR_REV)
+#remove outliers
+
+#remove characters & missing values from INCIDENT_DATE
+length(data2$INCIDENT_DATE[which(is.na(data2$INCIDENT_DATE))]) #0 i.e. no missing values
+data2 <- data2[which(data2$INCIDENT_DATE != "0"),]
+data2 <- data2[which(data2$INCIDENT_DATE != "ASIA"),]
+#extract first four digits of INCIDENT_DATE and put as INCIDENT_YEAR_REV
+data2$INCIDENT_YEAR_REV <- substr(data2$INCIDENT_DATE,1,4)
+#convert to numeric
+data2$INCIDENT_YEAR_REV <- as.numeric(data2$INCIDENT_YEAR_REV)
+
+#EDA for Continuous Variables
+#univariate analysis
+#distribution of variables
+plot_histogram(data2)
+
+#density plot
+plot_density(data2)
+
+#remove outliers from FATALITY_YEAR_REV
+quantile(data2$FATALITY_YEAR_REV, 0.75) #1952
+quantile(data2$FATALITY_YEAR_REV, 0.95) #1954
+
+data2 <- data2[which(data2$FATALITY_YEAR_REV <= 1954),]
+
+#multivariate analysis
+#correlation
+plot_correlation(data2, type = 'continuous', 'FATALITY_YEAR_REV')
+
+#BIRTH_YEAR
+#remove missing values
+data2 <- data2[which(!is.na(data2$BIRTH_YEAR)),]
+data2$BIRTH_YEAR <- as.numeric(data2$BIRTH_YEAR)
+
+plot_histogram(data2)
+plot_density(data2)
+plot_correlation(data2, type = 'continuous', 'FATALITY_YEAR_REV')
+
+#EDA for Categorical Variables
+plot_bar(data2)
+
+#create basic EDA report
+#library(rmarkdown)
+#create_report(data2)
+
