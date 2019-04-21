@@ -1,0 +1,151 @@
+library(dplyr)
+library(tidyverse)
+library(stringr)
+
+data <- read.csv("C:\\Users\\P1318124\\Desktop\\BA Projects\\edX\\Data Wrangling with HarvardX\\KoreanConflict.csv",na.strings=c("","NA"), stringsAsFactors=FALSE, header=TRUE)
+
+#reference for US States Abbreviations
+ref <- read.csv("C:\\Users\\P1318124\\Desktop\\BA Projects\\edX\\Data Wrangling with HarvardX\\50_us_states_all_data.csv",header=FALSE)
+head(ref)
+colnames(ref) <- c("STATE_CAPS","STATE","ABB","ABB_2")
+
+str(data)
+
+table(as.data.frame(data$HOME_STATE)) #has entries with abbreviated state names (convert to full state names)
+
+dirty <- data$HOME_STATE
+
+#detect state abbreviations  (two alphabets)
+pattern <- "^[a-zA-Z][a-zA-Z]$"
+str_detect(dirty,pattern)
+str_view(dirty,pattern)
+
+length(unique(dirty[which(str_length(dirty)==2)])) #48
+table(dirty[which(str_length(dirty)==2)]) #frequency table for state abbreviations in dirty
+
+#deal with TX (i.e. TEXAS)
+
+dirty2 <- dirty %>%
+str_replace("^TX$","TEXAS") %>%
+str_replace("^AL$","ALABAMA") %>%
+str_replace("^AR$","ARKANSAS") %>%
+str_replace("^AZ$","ARIZONA") %>%
+str_replace("^CA$","CALIFORNIA") %>%
+str_replace("^CO$","COLORADO") %>%
+str_replace("^CT$","CONNECTICUT") %>%
+str_replace("^FL$","FLORIDA") %>%
+str_replace("^GA$","GEORGIA") %>%
+str_replace("^HI$","HAWAII") %>%
+str_replace("^IA$","IOWA") %>%
+str_replace("^ID$","IDAHO") %>%
+str_replace("^IL$","ILLINOIS") %>%
+str_replace("^IN$","INDIANA") %>%
+str_replace("^KS$","KANSAS") %>%
+str_replace("^KY$","KENTUCKY") %>%
+str_replace("^LA$","LOUISIANA") %>%
+str_replace("^MA$","MASSACHUSETTS") %>%
+str_replace("^MD$","MARYLAND") %>%
+str_replace("^ME$","MAINE") %>%
+str_replace("^MI$","MICHIGAN") %>%
+str_replace("^MN$","MINNESOTA") %>%
+str_replace("^MO$","MISSOURI") %>%
+str_replace("^MS$","MISSISSIPPI") %>%
+str_replace("^MT$","MONTANA") %>%
+str_replace("^NC$","NORTH CAROLINA") %>%
+str_replace("^ND$","NORTH DAKOTA") %>%
+str_replace("^NE$","NEBRASKA") %>%
+str_replace("^NH$","NEW HAMPSHIRE") %>%
+str_replace("^NJ$","NEW JERSEY") %>%
+str_replace("^NM$","NEW MEXICO") %>%
+str_replace("^NV$","NEVADA") %>%
+str_replace("^NY$","NEW YORK") %>%
+str_replace("^OH$","OHIO") %>%
+str_replace("^OK$","OKLAHOMA") %>%
+str_replace("^OR$","OREGON") %>%
+str_replace("^PA$","PENNSYLVANIA") %>%
+str_replace("^RI$","RHODE ISLAND") %>%
+str_replace("^SC$","SOUTH CAROLINA") %>%
+str_replace("^TN$","TENNESSEE") %>%
+str_replace("^TX$","TEXAS") %>%
+#str_replace("^US$","UNITED STATES") %>%
+str_replace("^UT$","UTAH") %>%
+str_replace("^VA$","VIRGINIA") %>%
+str_replace("^VI$","VIRGIN ISLANDS") %>%
+str_replace("^WA$","WASHINGTON") %>%
+str_replace("^WI$","WISCONSIN") %>%
+str_replace("^WV$","WEST VIRGINIA")
+
+table(dirty2)
+data[which(data$HOME_STATE=="VI"),]
+head(data[which(data$HOME_STATE=="US"),]) #data shifted to the left by one column (into MARITAL_STATUS)
+
+data$HOME_STATE <- dirty2
+
+data2 <- data
+data2$HOME_STATE <- ifelse(data2$HOME_STATE == "US", data2$MARITAL_STATUS, data2$HOME_STATE)
+head(data2[which(data2$HOME_STATE=="US"),]) #no rows/observations
+table(data2$HOME_STATE)
+
+
+#rerun str_replace for data2
+dirty3 <- data2$HOME_STATE
+
+dirty4 <-  dirty3 %>%
+str_replace("^TX$","TEXAS") %>%
+str_replace("^AL$","ALABAMA") %>%
+str_replace("^AR$","ARKANSAS") %>%
+str_replace("^AZ$","ARIZONA") %>%
+str_replace("^CA$","CALIFORNIA") %>%
+str_replace("^CO$","COLORADO") %>%
+str_replace("^CT$","CONNECTICUT") %>%
+str_replace("^FL$","FLORIDA") %>%
+str_replace("^GA$","GEORGIA") %>%
+str_replace("^HI$","HAWAII") %>%
+str_replace("^IA$","IOWA") %>%
+str_replace("^ID$","IDAHO") %>%
+str_replace("^IL$","ILLINOIS") %>%
+str_replace("^IN$","INDIANA") %>%
+str_replace("^KS$","KANSAS") %>%
+str_replace("^KY$","KENTUCKY") %>%
+str_replace("^LA$","LOUISIANA") %>%
+str_replace("^MA$","MASSACHUSETTS") %>%
+str_replace("^MD$","MARYLAND") %>%
+str_replace("^ME$","MAINE") %>%
+str_replace("^MI$","MICHIGAN") %>%
+str_replace("^MN$","MINNESOTA") %>%
+str_replace("^MO$","MISSOURI") %>%
+str_replace("^MS$","MISSISSIPPI") %>%
+str_replace("^MT$","MONTANA") %>%
+str_replace("^NC$","NORTH CAROLINA") %>%
+str_replace("^ND$","NORTH DAKOTA") %>%
+str_replace("^NE$","NEBRASKA") %>%
+str_replace("^NH$","NEW HAMPSHIRE") %>%
+str_replace("^NJ$","NEW JERSEY") %>%
+str_replace("^NM$","NEW MEXICO") %>%
+str_replace("^NV$","NEVADA") %>%
+str_replace("^NY$","NEW YORK") %>%
+str_replace("^OH$","OHIO") %>%
+str_replace("^OK$","OKLAHOMA") %>%
+str_replace("^OR$","OREGON") %>%
+str_replace("^PA$","PENNSYLVANIA") %>%
+str_replace("^PR$","PUERTO RICO") %>%
+str_replace("^RI$","RHODE ISLAND") %>%
+str_replace("^SC$","SOUTH CAROLINA") %>%
+str_replace("^SD$","SOUTH DAKOTA") %>%
+str_replace("^TN$","TENNESSEE") %>%
+str_replace("^TX$","TEXAS") %>%
+#str_replace("^US$","UNITED STATES") %>%
+str_replace("^UT$","UTAH") %>%
+str_replace("^VA$","VIRGINIA") %>%
+str_replace("^VI$","VIRGIN ISLANDS") %>%
+str_replace("^WA$","WASHINGTON") %>%
+str_replace("^WI$","WISCONSIN") %>%
+str_replace("^WV$","WEST VIRGINIA")
+
+table(dirty4)
+
+data2$HOME_STATE <- dirty4
+table(data2$HOME_STATE)
+
+#END OF STRING CLEANING FOR US STATE CODE
+
