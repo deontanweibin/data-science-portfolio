@@ -1,0 +1,80 @@
+#perform Linear Regression to predict house prices in King County, USA
+#data taken from https://www.kaggle.com/sushantsawant/linear-regression/data
+
+library(dplyr)
+library(tidyverse)
+library(stringr)
+library(DataExplorer)
+library(lubridate)
+
+data <- read.csv("C:\\Users\\P1318124\\Desktop\\BA Projects\\Linear Regression\\kc_house_data.csv",stringsAsFactors = FALSE,header=TRUE)
+
+#EDA
+plot_str(data) #21613 rows, 21 columns
+plot_missing(data) #no missing values
+
+#EDA on continuous variables
+#univariate analysis
+plot_histogram(data)
+plot_density(data)
+
+#multivariate analysis
+plot_correlation(data,type='continuous','price') #price highly (positive) correlated with
+#sqft_living, grade, sqft_above
+
+#EDA on categorical variables
+plot_bar(data)
+
+#Cleaning date
+data$date_rev <- paste(substr(data$date,1,4), substr(data$date,5,6), substr(data$date,7,8), sep="-")
+data$date_rev <- ymd(data$date_rev)
+data$date_year <- year(data$date_rev)
+
+plot_bar(data)
+
+#Linear Regression
+#select more significant predictor variables 
+lin_data <- data[,c('price','sqft_living','grade','sqft_above')]
+
+#split into train and test data
+train_size <- floor(0.8 * nrow(lin_data))
+set.seed(123)
+train_ind <- sample(seq_len(nrow(lin_data)),size=train_size)
+
+train_data <- lin_data[train_ind,]
+test_data <- lin_data[-train_ind,]
+
+x_train <- train_data[,c(2,3,4)]
+y_train <- train_data[,1]
+x_test <- test_data[,c(2,3,4)]
+y_test <- test_data[,1]
+
+#Train model and evaluate scores
+model <- lm(y_train ~ ., data = x_train)
+summary(model)
+
+#Predict Output
+predicted <- predict(model, x_test)
+predict_test <- cbind(test_data,predicted)
+predict_test$eval <- 
+
+#residual sum of suqares
+RSS <- c(crossprod(model$residuals))
+
+#mean squared error
+MSE <- RSS / length(model$residuals)
+
+#root MSE
+RMSE <- sqrt(MSE)
+
+#Pearson estimated residual variance (as returned by summary.lm):
+sig2 <- RSS / res$df.residual
+
+#plot performance of model vs actual of test data
+plot(predicted,test_data$price,xlab="predicted",ylab="actual")
+abline(a=0,b=1)
+
+#END OF LINEAR REGRESSION ANALYSIS
+
+
+
