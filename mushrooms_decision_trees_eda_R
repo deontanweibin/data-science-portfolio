@@ -1,0 +1,111 @@
+#data taken from https://www.kaggle.com/jnduli/decision-tree-classifier-for-mushroom-dataset/data
+#install.packages("sqldf", repos="http://cran.us.r-project.org")
+#install.packages("GoodmanKruskal", repos="http://cran.us.r-project.org")
+
+library(rpart)
+library(dplyr)
+library(DataExplorer)
+library(ggplot2)
+library(GoodmanKruskal)
+
+
+data <- read.csv("C:\\Users\\P1318124\\Desktop\\BA Projects\\Decision Trees\\mushrooms.csv",header=TRUE,stringsAsFactors=TRUE)
+
+#EDA
+plot_str(data) #8124 rows, 23 columns
+DataExplorer::plot_missing(data) #no missing data
+
+head(data)
+str(data) #p is poisonous, e is edible
+
+#mix of poisonous and edible mushrooms
+p_prop <- nrow(data[which(data$class=='p'),]) / nrow(data)
+e_prop <- nrow(data[which(data$class=='e'),]) / nrow(data)
+
+table(data$class)
+
+#EDA on continuous variables
+#univariate analysis
+plot_histogram(data) #no continuous variables so no plot
+plot_density(data) #no continuous variables so no plot
+
+#multivariate analysis
+plot_correlation(data--- #no continous variables so no multivariate analysis 
+
+#EDA on categorical variables
+plot_bar(data, nrow=6, ncol=4) #see all 23 categorical variables' plot in one page
+
+#finding correlation between categorical variables via frequency tables
+class_cap.color <- table(data$class,data$cap.color)
+ftable(class_cap.color) #120 out 168 black cap mushrooms are poisonous
+
+#marginal frequencis
+margin.table(class_cap.color,1) #class frequencies summed over cap.color 
+margin.table(class_cap.color,2) #cap.color frequencies summed over class 
+
+#proportion table
+prop.table(class_cap.color)
+prop.table(class_cap.color,1)
+prop.table(class_cap.color,2)
+
+prop.table(class_cap.color)*100
+prop.table(class_cap.color,2)*100 #more than 70% of 'c' cap colour are edible mushrooms
+
+#data visualisation to detect relationships between categorical variables
+p <- ggplot(data = data, aes(x=cap.shape,y=cap.surface, color=class))
+p + geom_jitter(alpha=0.3) + scale_color_manual(breaks = c("edible","poisonous"),values=c("darkgreen","red")) #edible mushrooms, poisonous ones
+#have certain traits dominated by them
+
+#EDA on categorical variables to determine significance (independence)
+#use chisq.test of independence
+chisq.test(data$class, data$cap.surface, correct = FALSE) #too many small sizes for at least a level of factor for cap.surface
+table(data$cap.surface)
+#   f    g    s    y 
+#2320    4 2556 3244 #g has small size of 4 observations
+#use another variable with no small size for any level of its factor
+chisq.test(data$class, data$stalk.shape, correct = FALSE) #p-value less than alpha 0.05, hence reject H0 (independence between variables
+#and accept H1 (dependence between variables)
+class_stalk.shape <- table(data$class,data$stalk.shape)
+prop.table(class_stalk.shape,2)*100
+
+#measure strength of association between variables
+varset1<- c("cap.shape","cap.surface","habitat","odor","class")
+mushroomFrame1<- subset(data, select = varset1)
+GKmatrix1<- GKtauDataframe(mushroomFrame1)
+plot(GKmatrix1, corrColors = "blue")
+
+GKmatrix2<- GKtauDataframe(data) 
+plot(GKmatrix2, corrColors = "darkgreen") #error
+
+varset2<- c("class","cap.surface","population","stalk.shape","odor")
+mushroomFrame2<- subset(data, select = varset2)
+GKmatrix3<- GKtauDataframe(mushroomFrame2)
+plot(GKmatrix3, corrColors = "blue")
+#tau(class,stalk.shape) = 0.01, tau(stalk.shape,class) = 0.01
+#hence although class and stalk.shape are significant (i.e. dependence between the two), their association is weak (0.01)
+#so will be hard to predict the class by the stalk.shape, or (predict) the stalk.shape by class
+
+
+#Decision Trees
+#split into train and test data
+train_size <- floor(0.8 * nrow(data))
+set.seed(123)
+train_ind <- sample(seq_len(nrow(data)),size=train_size)
+
+train_data <- data[train_ind,]
+test_data <- data[-train_ind,]
+
+x_train <- train_data[,-c(1)]
+y_train <- train_data[,1]
+x_test <- test_data[,-c(1)]
+y_test <- test_data[,1]
+
+
+x <- cbind(x_train,y_train)
+# grow tree 
+fit <- rpart(y_train ~ ., data = x,method="class")
+summary(fit)
+#Predict Output 
+predicted= predict(fit,x_test)
+
+
