@@ -1,0 +1,137 @@
+#install.packages("BaylorEdPsych", repos="http://cran.us.r-project.org", dependencies = TRUE) #test for MCAR via LittleMCAR()
+library(BaylorEdPsych)
+library(dplyr)
+library(DataExplorer)
+#devtools::install_github("dkahle/ggmap")
+#devtools::install_github("hrbrmstr/ggalt")
+library(ggmap)
+library(ggalt)
+library(ggplot2)
+library(sqldf)
+library(data.table)
+library(e1071)
+library(lubridate)
+
+data <- read.csv("C:\\Users\\P1318124\\Desktop\\BA Projects\\Missing Values\\comma-separated-values-file-1.csv",header=TRUE, stringsAsFactors = TRUE)
+
+#EDA
+plot_str(data) #89373 rows, 26 columns
+plot_missing(data) #PRA, Longitude, Latitude, Zip.Code, Address.Number have missing values (0.04% to 6.33%)
+
+#Evaluate missing values
+#test for MCAR (Missing Completely at Random)
+test_mcar <- LittleMCAR(data[,c('PRA','Longitude','Latitude','Zip.Code','Address.Number')])
+print(test_mcar$amount.missing)
+#                         PRA    Longitude     Latitude     Zip.Code
+#Number Missing  4.000000e+01 7.100000e+01 7.100000e+01 2.960000e+02
+#Percent Missing 4.475625e-04 7.944234e-04 7.944234e-04 3.311962e-03
+#                Address.Number
+#Number Missing    5.658000e+03
+#Percent Missing   6.330771e-02
+
+print(test_mcar$p.value)
+
+colnames(data)
+head(data)
+str(data)
+summary(data) #most crimes (89217) comitted in MD state
+#most crimes (38486) comitted were Crime Against Property under Crime.Name1
+#mean number of victims is 1, 22 is the max (seems like an outlier) 
+
+data$Incident.ID <- as.factor(data$Incident.ID)
+data$Zip.Code <- as.factor(data$Zip.Code)
+data$PRA <- as.factor(data$PRA) 
+
+#EDA on continuous variables
+#univariate analysis
+plot_histogram(data)
+plot_density(data)
+
+#find out which crimes affect more victims
+crime_victims <- table(data$Crime.Name1,data$Victims)
+barplot(crime_victims, main = "Crime Types and the number of Victims involved", xlab = "Number of victims",col=c("red","darkblue","pink","yellow","darkgreen","grey"),
+legend = rownames(crime_victims),beside=TRUE) #crimes against property reports highest number of 1-victims
+
+#spread of crimes across region
+# Google Road Map
+us_ggl_road_map <- qmap("united states", zoom=12, source = "google", maptype="roadmap")  
+
+
+#multivariate analysis
+plot_correlation(data,type='continuous','Victims') #no valuable insight
+
+#EDA on categorical variables
+plot_bar(data)
+#Silver Spring Police District Name reports highest number of crimes
+#most reports from MD State, so remove non-MD states
+data_state <- table(data$State)
+prop.table(data_state)*100 #99.8% of reports from MD state
+data <- data[which(data$State == 'MD'),]
+
+data_pd <- table(data$Police.District.Name)
+prop.table(data_pd)*100 #OTHER, TAKOMA PARK, CITY OF TAKOMA PARK has smalles crime reports hence remove
+data2 <- data[which(!(data$Police.District.Name %in% c('OTHER','TAKOMA PARK','CITY OF TAKOMA PARK'))),]
+#remove empty factors
+data2 <- droplevels(data2)
+
+#find out what kind of crimes are reported for each police district
+pd_crime <- table(data2$Police.District.Name, data2$Crime.Name1)
+barplot(pd_crime, main = "Types of Crime by Police District", xlab = "Crime Types", col = c("darkblue","green","brown","grey","red","yellow"),
+legend = rownames(pd_crime), beside = TRUE) #Crime Against Society mostly reported in Silver Spring
+
+#remove empty Crime.Name1
+data3 <- data2[which(data2$Crime.Name1 != ""),]
+data3 <- droplevels(data3)
+table(data3$Crime.Name1)
+plot_bar(data3)
+
+#create Generalised Linear Model (glm) based on Poisson (counts)
+#number of crimes by Police District Name and Crime Name
+#prepare data
+#rename columns
+colnames(data3)[7] <- 'Crime_Name1'
+colnames(data3)[10] <- 'Police_District_Name'
+
+pd_crime_data <- sqldf("SELECT COUNT() AS crime_num, Police_District_Name, Crime_Name1 FROM data3 GROUP BY 2,3")
+poisson_model <- glm(crime_num ~ Police_District_Name + Crime_Name1, data = pd_crime_data, family = poisson)
+summary(poisson_model)
+
+#logistic regression to identify if crime committed is against society
+data4 <- data3
+data4$is_against_society <- ifelse(data3$Crime_Name1 == 'Crime Against Society',1,0)
+logistic_model <- glm(is_against_society ~ Police_District_Name + Sector, data = data4, family = binomial)
+summary(logistic_model)
+
+#svm to predict if crime against society depends on week and whether or not it is in Silver Spring
+data5 <- data4
+data5$is_silver_spring <- ifelse(data5$Police_District_Name == 'SILVER SPRING',1,0)
+data5$day_dispatch <- weekdays(mdy_hms(data5$Dispatch.Date.Time))
+data5$day_dispatch2 <- 1
+data5$day_dispatch2[which(data5$day_dispatch == 'Tuesday')] <- 2
+data5$day_dispatch2[which(data5$day_dispatch == 'Wednesday')] <- 3
+data5$day_dispatch2[which(data5$day_dispatch == 'Thursday')] <- 4
+data5$day_dispatch2[which(data5$day_dispatch == 'Friday')] <- 5
+data5$day_dispatch2[which(data5$day_dispatch == 'Saturday')] <- 6
+data5$day_dispatch2[which(data5$day_dispatch == 'Sunday')] <- 7
+
+data5$is_silver_spring2 <- data5$is_silver_spring
+data5$is_silver_spring2[which(data5$Police_District_Name == 'WHEATON')] <- 2
+data5$is_silver_spring2[which(data5$Police_District_Name == 'SILVER SPRING')] <- 3
+data5$is_silver_spring2[which(data5$Police_District_Name == 'BETHESDA')] <- 4
+data5$is_silver_spring2[which(data5$Police_District_Name == 'GERMANTOWN')] <- 5
+data5$is_silver_spring2[which(data5$Police_District_Name == 'MONTGOMERY VILLAGE')] <- 6
+data5$is_silver_spring2[which(data5$Police_District_Name == 'ROCKVILLE')] <- 7
+data5$is_silver_spring3 <- log(data5$is_silver_spring2)
+
+#convert is_against_society into factor
+data5$is_against_society <- as.factor(data5$is_against_society)
+
+data6 <- data5[1:floor(nrow(data5)*0.005),c('is_against_society','day_dispatch2','is_silver_spring3')]
+
+
+
+svm_model <- svm(is_against_society ~ day_dispatch2 + is_silver_spring3, data = data6)
+plot(svm_model,data6,main="",col=c('grey','black'))
+
+
+
