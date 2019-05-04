@@ -1,0 +1,62 @@
+
+SELECT scr_acct_id,MAX(txn_dt), TO_DATE('01-Apr-2019','DD-Mon-YYYY') - MAX(txn_dt) AS DAYS_SINCE, SUM(orig_amt) AS sum_amt, COUNT(orig_amt) AS txns
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM
+    WHERE (SVC_CLASS_NAME in ('P2M', 'P2M Pinless') OR SVC_CLASS_NAME LIKE '%ISO8583%')
+      AND TXN_DT between to_date('01-Apr-2018','DD-Mon-YY') and to_date('01-Apr-2019','DD-Mon-YY')
+      and orig_amt > 0.09
+      and data_txn_rfnd = 'False'
+      and STAT LIKE '%PST%'
+      GROUP BY scr_acct_id
+
+
+--R
+#R
+#install.packages("graphics", repos="http://cran.us.r-project.org")
+#install.packages("clusplot", repos="http://cran.us.r-project.org")
+
+library(dplyr)
+library(lubridate)
+library(cluster)
+
+
+data <- read.csv("C:\\Users\\P1318124\\Desktop\\BA Projects\\Clustering Analysis\\clustering_people_p2m_vpc.csv",header=TRUE)
+
+colnames(data)
+colnames(data) <- c("cust","max_date","days_since","amt","txns")
+
+y <- subset(data, select = c(cust,days_since,amt,txns))
+
+y2 <-scale(y)
+
+head(y2)
+
+train_size <- floor(0.001 * nrow(y2))
+set.seed(123)
+train_ind <- sample(seq_len(nrow(y2)),size=train_size)
+y3 <- y2[train_ind,]
+
+
+#compute distance matrix
+fit <- hclust(dist(y3), "average")
+
+#red border
+groups <- cutree(fit, k=3)
+plot(fit)
+x <- rect.hclust(fit, k=3, border="red")
+x
+
+#examine clusters
+cluster1 <- y[c(---,---,------),]
+View(cluster1) #cluster 1 characterised by medium spending 
+#and frequency in purchases, mostly less active customers
+
+cluster2 <- y[c(67972,49),]
+View(cluster2) #cluster 2 characterised by very active and high spending customers with
+#frequent purchases i.e VIP customers
+
+cluster3 <- y[c(58359,29534),]
+View(cluster3) #cluster 3 characterised by very active customers with highly frequent purchases
+#with medium spending
+
+
+
