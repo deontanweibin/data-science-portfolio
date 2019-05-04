@@ -1,0 +1,90 @@
+
+SELECT scr_acct_id,MAX(txn_dt), TO_DATE('01-Apr-2019','DD-Mon-YYYY') - MAX(txn_dt) AS DAYS_SINCE, SUM(orig_amt) AS sum_amt, COUNT(orig_amt) AS txns
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM
+    WHERE (SVC_CLASS_NAME in ('P2M', 'P2M Pinless') OR SVC_CLASS_NAME LIKE '%ISO8583%')
+      AND TXN_DT between to_date('01-Apr-2018','DD-Mon-YY') and to_date('01-Apr-2019','DD-Mon-YY')
+      and orig_amt > 0.09
+      and data_txn_rfnd = 'False'
+      and STAT LIKE '%PST%'
+      GROUP BY scr_acct_id
+
+
+--R
+#R
+#install.packages("graphics", repos="http://cran.us.r-project.org")
+#install.packages("clusplot", repos="http://cran.us.r-project.org")
+
+library(dplyr)
+library(lubridate)
+library(cluster)
+
+
+data <- read.csv("C:\\Users\\P1318124\\Desktop\\BA Projects\\Clustering Analysis\\clustering_people_p2m_vpc.csv",header=TRUE)
+
+colnames(data)
+colnames(data) <- c("cust","max_date","days_since","amt","txns")
+
+y <- subset(data, select = c(cust,days_since,amt,txns))
+
+
+#always set seed before clustering
+
+set.seed(123)
+clust3 <- kmeans(y,3)
+clust3$betweenss/clust3$totss
+
+#cluster elbow plot
+set.seed(123)
+df <- sapply(3:15,function(k) {kmeans(y,k)$tot.withinss})
+plot(3:15, df, type='b', xlab="# of cluster",ylab="Total Within Clusters SS")
+
+#clusters assignments
+clusters3 <- clust3$cluster
+
+#display clusters
+hist(clusters3)
+
+#cluster plots
+append.clust <- data.frame(data, clusters3)
+
+set.seed(123)
+sampleit <- append.clust[sample(nrow(append.clust),100),]
+
+cluster::clusplot(sampleit[,c(3,4,5)], sampleit$clusters3, color = TRUE, shade=TRUE,labels=2,lines=0)
+
+#find average values, counts for each cluster
+colnames(append.clust)
+
+append.clust %>% select(clusters3, amt, txns, days_since) %>%
+group_by(clusters3) %>%
+summarise_each(funs(n(),mean))
+
+# A tibble: 3 x 7
+#  clusters3 amt_n txns_n days_since_n amt_mean txns_mean days_since_mean
+#      <int> <int>  <int>        <int>    <dbl>     <dbl>           <dbl>
+#1         1 -  -       -----
+#2         2 -----
+#3         3 ------
+#cluster 1 is the ________ in number of people, not-so-recent customers, and medium spends
+#and medium number of purchases
+#cluster 2 is ______ in number of people, with higher spends and 
+#more frequent purchases and more active i.e. the VIP group
+#cluster 3 has ______ number of people, with the lowest spends and infrequent purchases
+#and are dormant customers who have not purchased for more than three months
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
