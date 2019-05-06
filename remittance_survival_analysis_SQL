@@ -1,0 +1,39 @@
+--find customers' drop-off starting from customer who made their first remittance in Dec-2018 onwards
+SELECT scr_acct_id, txn_date, Nett_Spends, Nett_Transactions, first_remit_date2
+FROM
+(
+SELECT scr_acct_id,SUM(Nett_Spends) AS Nett_Spends, COUNT(Nett_Spends) AS Nett_Transactions, txn_date, day, month, year, TO_CHAR(first_remit_date,'DD-Mon-YYYY') AS first_remit_date2
+FROM
+(
+SELECT b.scr_acct_id AS scr_acct_id ,a.SRC_DEBIT + FX_MARGIN AS Nett_Spends, to_char(a.TXN_DT,'DD-Mon-YYYY') AS txn_date,to_char(a.TXN_DT,'DD') AS day, to_char(a.TXN_DT,'MM') AS month, to_char(a.TXN_DT,'YYYY') AS year, b.svc_class_name,MIN(a.txn_dt) OVER (PARTITION BY b.scr_acct_id) AS first_remit_date,
+(CASE 
+WHEN b.SVC_CLASS_NAME LIKE '%Philippines%' OR b.SVC_CLASS_NAME LIKE '%GCash%'
+    THEN 'PHILIPPINES'
+WHEN b.SVC_CLASS_NAME LIKE '%Telkomsel%' OR b.SVC_CLASS_NAME LIKE '%Delima%' OR b.SVC_CLASS_NAME LIKE '%Indonesia%'
+    THEN 'INDONESIA'
+WHEN b.SVC_CLASS_NAME LIKE '%bKash%' OR b.SVC_CLASS_NAME LIKE '%Bangladesh%'
+    THEN 'BANGLADESH'
+WHEN b.SVC_CLASS_NAME LIKE '%India%'
+    THEN 'INDIA'
+WHEN b.SVC_CLASS_NAME LIKE '%China%'
+    THEN 'CHINA'
+WHEN b.SVC_CLASS_NAME LIKE '%Myanmar%'
+    THEN 'MYANMAR'
+END) CORRIDOR
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_HUB a
+INNER JOIN EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM b
+ON a.scr_ref = b.txn_id
+WHERE a.STAT LIKE '%PST%'
+AND b.CUST_MSISDN != '6583381170' 
+AND b.CUST_MSISDN != '6597727199'
+AND b.CUST_MSISDN != '6596510899'
+And b.data_txn_rfnd = 'False'
+--AND a.TXN_DT >= TO_DATE('01-Apr-2018','DD-Mon-YYYY')
+)
+WHERE first_remit_date >= TO_DATE('01-Dec-2018','DD-Mon-YYYY')
+GROUP BY txn_date, day, month, year, scr_acct_id,TO_CHAR(first_remit_date,'DD-Mon-YYYY')
+ORDER BY year, month, day, scr_acct_id
+)   
+
+
+
