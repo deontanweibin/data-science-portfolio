@@ -1,0 +1,111 @@
+SELECT scr_acct_id, to_char(txn_dt,'DD-Mon-YYYY') AS txn_date, brnd_name, brnd_id
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM
+    WHERE SVC_CLASS_NAME in ('P2M', 'P2M Pinless')
+      AND TXN_DT between to_date('01-Apr-2018','DD-Mon-YY') and to_date('01-Apr-2019','DD-Mon-YY')
+      and orig_amt > 0.09
+      and data_txn_rfnd = 'False'
+      and STAT LIKE '%PST%'
+      
+
+--R
+##R
+
+library(sqldf)
+library(knitr)
+library(arules)
+library(arulesViz)
+
+
+data <- read.csv("C:\\Users\\P1318124\\Desktop\\BA Projects\\Market Basket Analysis\\market_basket_analysis_p2m.csv",header=TRUE,stringsAsFactors=FALSE)
+
+head(data)
+colnames(data)
+str(data)
+summary(data)
+
+#metadata
+metadata <- capture.output(data)
+data2 <- data
+options(stringsAsFactors=T)
+
+#analyse input file
+kable(head(data2))
+kable(head(data2),format='html')
+
+
+#clean date
+txn_date_vec <- as.Date(data$TXN_DATE,'%d-%b-%Y')
+txn_date_vec <- sort(txn_date_vec, decreasing = FALSE)
+str(txn_date_vec)
+head(as.data.frame(txn_date_vec))
+tail(as.data.frame(txn_date_vec))
+
+#filter out people who perform one transaction only
+single.trans <- sqldf("SELECT SCR_ACCT_ID,  COUNT(*) AS itemcount FROM data2 GROUP BY SCR_ACCT_ID HAVING COUNT(*) == 1")
+
+#people with more than one transaction
+mult.trans <- sqldf("SELECT SCR_ACCT_ID,  COUNT(*) AS itemcount FROM data2 GROUP BY SCR_ACCT_ID HAVING COUNT(*) > 1")
+
+#frequency
+hist(mult.trans$itemcount, breaks = 500, xlim = c(0,50))
+head(table(mult.trans$itemcount),20)
+
+#merge into data
+data3 <- merge(data2,mult.trans, by='SCR_ACCT_ID')
+dim(data3)
+dim(data2)
+
+#train test sets
+pctx <- round(0.5 * nrow(data3))
+set.seed(123)
+
+#randomise rows
+data4 <- data3[sample(nrow(data3)),]
+rows <- nrow(data4)
+data_train <- data4[1:pctx,] #train set
+data_test <- data4[(1+pctx):rows,] #test set
+
+nrow(data_train)
+nrow(data_test)
+
+#convert to transactions class
+tmp <- data.frame(data3$SCR_ACCT_ID, data3$BRND_NAME)
+names(tmp)[1] <- 'ID'
+names(tmp)[2] <- 'BRAND'
+dim(tmp)
+
+tmp <- unique(tmp)
+dim(tmp)
+
+kable(head(tmp))
+
+tmp$BRAND <- as.character(tmp$BRAND)
+tmp$ID <- as.factor(tmp$ID)
+
+x <- split(tmp[,2], tmp[,1])
+
+#load arules first
+trans <- as(split(tmp$BRAND, tmp$ID), "transactions")
+
+
+#inspect association rules
+arules::inspect(trans[1:5])
+
+#plot
+itemFrequencyPlot(trans,topN=10, type="absolute",cex.names=0.7)
+
+#rules
+rulesx <- apriori(trans, parameter = list(minlen=2,support=0.03,confidence=0.01))
+summary(rulesx)
+
+rules_df <- as.data.frame(arules::inspect(head(sort(rulesx,by="confidence"),10)))
+rules_df <- as.data.frame(arules::inspect(head(sort(rulesx,by="lift"),10)))
+
+#subset rules
+lhs.rules <- subset(rulesx, subset = lhs %pin% 'Driver')
+lhs.rules
+inspect(lhs.rules)
+
+#plot rules
+plot(lhs.rules, method = "scatterplot")
+
