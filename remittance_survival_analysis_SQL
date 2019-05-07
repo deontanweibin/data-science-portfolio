@@ -1,5 +1,5 @@
 --find customers' drop-off starting from customer who made their first remittance in Dec-2018 onwards
-SELECT scr_acct_id, txn_date, Nett_Spends, Nett_Transactions, first_remit_date2
+SELECT scr_acct_id, txn_date, Nett_Spends, Nett_Transactions, first_remit_date2, acct_natly
 FROM
 (
 SELECT scr_acct_id,SUM(Nett_Spends) AS Nett_Spends, COUNT(Nett_Spends) AS Nett_Transactions, txn_date, day, month, year, TO_CHAR(first_remit_date,'DD-Mon-YYYY') AS first_remit_date2
@@ -33,7 +33,15 @@ And b.data_txn_rfnd = 'False'
 WHERE first_remit_date >= TO_DATE('01-Dec-2018','DD-Mon-YYYY')
 GROUP BY txn_date, day, month, year, scr_acct_id,TO_CHAR(first_remit_date,'DD-Mon-YYYY')
 ORDER BY year, month, day, scr_acct_id
-)   
+) txn  
+LEFT JOIN EDWDM.TEDW_SINGCASH_ACCOUNT demo
+ON txn.scr_acct_id = demo.acct_id
+
+
+
+
+
+
 
 
 
