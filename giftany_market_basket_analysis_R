@@ -1,0 +1,103 @@
+library(sqldf)
+library(knitr)
+library(arules)
+library(arulesViz)
+library(xlsx)
+library(readxl)
+
+data <- read_excel("C:\\Users\\P1318124\\Desktop\\BA Projects\\Giftany_BA\\Apriori\\giftany_transactions_since_beginning.xlsx",1)
+
+head(data)
+colnames(data)
+str(data)
+summary(data)
+
+#metadata
+metadata <- capture.output(data)
+data2 <- data
+options(stringsAsFactors=T)
+
+#merge data with giftcard brand
+list <- read.csv("C:\\Users\\P1318124\\Desktop\\BA Projects\\Giftany_BA\\Apriori\\Giftany_SOG_Daily_List.csv",header=TRUE,stringsAsFactors=FALSE)
+colnames(list)
+colnames(data)
+
+colnames(data)[10] <- "payment_description"
+colnames(data)
+data <- left_join(data, list, by = 'payment_description')
+data <- as.data.frame(data)
+colnames(data)   
+#data <- data[,-32]
+
+data <- as.data.frame(data)
+data_df <- sqldf("SELECT user_association_id, Giftcards FROM data")
+
+
+#filter out people who perform one transaction only
+single.trans <- sqldf("SELECT user_association_id,  COUNT(*) AS itemcount FROM data GROUP BY user_association_id HAVING COUNT(*) == 1")
+#1494
+
+#people with more than one transaction
+mult.trans <- sqldf("SELECT user_association_id,  COUNT(*) AS itemcount FROM data GROUP BY user_association_id HAVING COUNT(*) > 1")
+#1058
+
+#frequency
+hist(mult.trans$itemcount, breaks = 500, xlim = c(0,50))
+head(table(mult.trans$itemcount),20)
+
+#filter out one-time buyers
+data2 <- merge(data,mult.trans,by='user_association_id')
+dim(data2)
+dim(data)
+
+gc <- data2$payment_description[which(is.na(data2$Giftcards))] #209
+
+
+
+#convert to transactions class
+tmp <- data.frame(data2$user_association_id, data2$Giftcards)
+names(tmp)[1] <- 'ID'
+names(tmp)[2] <- 'BRAND'
+dim(tmp)
+
+tmp <- unique(tmp)
+dim(tmp)
+
+kable(head(tmp))
+
+tmp$BRAND <- as.character(tmp$BRAND)
+tmp$ID <- as.factor(tmp$ID)
+
+x <- split(tmp[,2], tmp[,1])
+
+#load arules first
+trans <- as(split(tmp$BRAND, tmp$ID), "transactions")
+
+
+#inspect association rules
+arules::inspect(trans[1:5])
+
+#plot
+itemFrequencyPlot(trans,topN=10, type="absolute",cex.names=0.7)
+
+#rules
+rulesx <- apriori(trans, parameter = list(minlen=2,support=0.01,confidence=0.01))
+summary(rulesx)
+
+rules_df <- as.data.frame(arules::inspect(sort(rulesx,by="confidence")))
+#rules_df <- as.data.frame(arules::inspect(head(sort(rulesx,by="lift"),10)))
+
+lhs.rules <- subset(rulesx, subset = lhs %pin% 'LAZADA')
+lhs.rules
+inspect(lhs.rules)
+
+rhs.rules <- subset(rulesx, subset = rhs %pin% 'LAZADA')
+rhs.rules
+inspect(rhs.rules)
+
+
+
+#plot rules
+plot(rulesx, method = "scatterplot")
+
+write.csv(rules_df, "C:\\Users\\P1318124\\Desktop\\BA Projects\\Giftany_BA\\Apriori\\giftany_market_basket_analysis_rues_df.csv",row.names=FALSE)
