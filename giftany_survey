@@ -1,0 +1,532 @@
+#install.packages("wordcloud", repos="http://cran.us.r-project.org")
+#install.packages("SnowballC", repos="http://cran.us.r-project.org")
+#install.packages("RColorBrewer", repos="http://cran.us.r-project.org")
+#install.packages("quanteda", repos="http://cran.us.r-project.org")
+#install.packages("RWeka", repos="http://cran.us.r-project.org")
+#install.packages("RWekajars", repos="http://cran.us.r-project.org")
+#install.packages("rJava", type = "source", repos="http://cran.us.r-project.org")
+
+library(sqldf)
+library(data.table)
+library(dplyr)
+library(RWekajars)
+library(RWeka)
+library(quanteda)
+library(tm)
+library(wordcloud)
+library(SnowballC)
+library(RColorBrewer)
+library(stringr)
+library(DataExplorer)
+
+data <- read.csv("C:\\Users\\P1318124\\Desktop\\BA Projects\\Giftany_BA\\Survey\\giftany_survey.csv",header=TRUE,stringsAsFactors=FALSE)
+
+#83 responses, 15 questions
+
+head(data)
+str(data)
+dim(data)
+colnames(data)
+
+
+tail(data)
+
+#find missing values
+length(data$txns_giftany[which(is.na(data$txns_giftany))])
+
+#remove above data
+data_rev <- data[which(!is.na(data$txns_giftany)),]
+dim(data_rev) #68 rows, 15 columns
+colnames(data_rev)
+
+
+#EDA
+plot_missing(data_rev) #no missing values
+
+#univariate analysis
+plot_histogram(data_rev)
+plot_density(data_rev)
+table(data_rev$txns_giftany)
+prop.table(table(data_rev$txns_giftany))*100 
+#EDA on categorical variables
+plot_bar(data_rev[,c('exp_giftany1','exp_giftany2','know_giftany','process_giftany')])
+table(data_rev$exp_giftany1)
+prop.table(table(data_rev$exp_giftany1))*100 
+table(data_rev$exp_giftany2)
+prop.table(table(data_rev$exp_giftany2))*100 
+colnames(data_rev) <- c("timestamp","username","reaction_giftany","impact_giftany","disc_giftany","inno_giftany","txns_giftany","have_giftany","motiv_giftany","recom_giftany","reason_recom_giftany","like_giftany","dislike_giftany","platform_giftany","other_comm_giftany")
+
+table(data_rev$disc_giftany)
+
+#detect 'Dash'
+str_detect(data_rev$disc_giftany, "^Dash")
+
+#replace 'Dash' variations with Singtel Dash
+data_rev$disc_giftany <- str_replace(data_rev$disc_giftany,"^Dash","Singtel Dash")
+table(data_rev$disc_giftany)
+
+#replace 'was a regular user of singtel gifts' with 'SOG'
+data_rev$disc_giftany <- str_replace(data_rev$disc_giftany,"singtel gifts$","SOG")
+table(data_rev$disc_giftany)
+
+table(data_rev$inno_giftany)
+prop.table(table(data_rev$inno_giftany))*100 
+#replace mont names with number
+data_rev$txns_giftany <- str_replace(data_rev$txns_giftany,"Feb$","02")
+data_rev$txns_giftany <- str_replace(data_rev$txns_giftany,"May$","05")
+data_rev$txns_giftany <- str_replace(data_rev$txns_giftany,"Oct$","10")
+
+table(data_rev$txns_giftany)
+prop.table(table(data_rev$txns_giftany))*100 
+table(data_rev$have_giftany)
+prop.table(table(data_rev$have_giftany))*100 
+table(data_rev$motiv_giftany)
+head(data_rev$motiv_giftany)
+#generate wordlcoud with tm and wordcloud packages
+data_rev$motiv_giftany <- str_replace(data_rev$motiv_giftany,";"," ")
+
+
+
+# Load the data_rev$motiv_giftany as a corpus
+docs <- Corpus(VectorSource(data_rev$motiv_giftany))
+inspect(docs)
+
+#text transformation
+#remove special characters
+#toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+#docs <- tm_map(docs, toSpace, "/")
+#docs <- tm_map(docs, toSpace, "@")
+#docs <- tm_map(docs, toSpace, "\\|")
+
+# Convert the data_rev$motiv_giftany to lower case
+docs <- tm_map(docs, content_transformer(tolower))
+
+# Remove numbers
+docs <- tm_map(docs, removeNumbers)
+
+# Remove english common stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+# specify your stopwords as a character vector
+docs <- tm_map(docs, removeWords, c("can", "use", "user", "anytime", "anywhere", "using","feel","awesome","prefer","love","pay")) 
+# Remove punctuations
+docs <- tm_map(docs, removePunctuation)
+# Eliminate extra white spaces
+docs <- tm_map(docs, stripWhitespace)
+# Text stemming
+# docs <- tm_map(docs, stemDocument)
+#build term-document matrix
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+
+
+#generate wordcloud
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words=200, random.order=FALSE, rot.per=0, 
+          colors=brewer.pal(8, "Dark2"))
+
+
+table(data_rev$recom_giftany)
+prop.table(table(data_rev$recom_giftany))*100 
+table(data_rev$reason_recom_giftany)
+data_rev$reason_recom_giftany <- str_replace(data_rev$reason_recom_giftany,"it's"," ")
+
+#segment data_rev$reason_recom_giftany based on ratings in recom_giftany
+table(data_rev$reason_recom_giftany[which(data_rev$recom_giftany >= 8)])
+#generate wordcloud
+docs2 <- Corpus(VectorSource(data_rev$reason_recom_giftany[which(data_rev$recom_giftany >= 8)]))
+inspect(docs2)
+docs <- docs2
+
+#text transformation
+#remove special characters
+#toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+#docs <- tm_map(docs, toSpace, "/")
+#docs <- tm_map(docs, toSpace, "@")
+#docs <- tm_map(docs, toSpace, "\\|")
+
+# Convert the data_rev$motiv_giftany to lower case
+docs <- tm_map(docs, content_transformer(tolower))
+
+# Remove numbers
+docs <- tm_map(docs, removeNumbers)
+
+# Remove english common stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+# specify your stopwords as a character vector
+docs <- tm_map(docs, removeWords, c("buy","it's","get","giftany","need","qoo10","vender","ecommendations","just","nil","can", "use", "user", "using","feel","pay")) 
+# Remove punctuations
+docs <- tm_map(docs, removePunctuation)
+# Eliminate extra white spaces
+docs <- tm_map(docs, stripWhitespace)
+
+# Text stemming
+# docs <- tm_map(docs, stemDocument)
+#build term-document matrix
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+#generate wordcloud
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 2,
+          max.words=200, random.order=FALSE, rot.per=0, 
+          colors=brewer.pal(8, "Dark2"))
+
+##rating 5-7
+table(data_rev$reason_recom_giftany[which(data_rev$recom_giftany >= 5 & data_rev$recom_giftany <= 7)])
+#generate wordcloud
+docs2 <- Corpus(VectorSource(data_rev$reason_recom_giftany[which(data_rev$recom_giftany >= 5 & data_rev$recom_giftany <= 7)]))
+inspect(docs2)
+docs <- docs2
+
+#text transformation
+#remove special characters
+#toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+#docs <- tm_map(docs, toSpace, "/")
+#docs <- tm_map(docs, toSpace, "@")
+#docs <- tm_map(docs, toSpace, "\\|")
+
+# Convert the data_rev$motiv_giftany to lower case
+docs <- tm_map(docs, content_transformer(tolower))
+
+# Remove numbers
+docs <- tm_map(docs, removeNumbers)
+
+# Remove english common stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+# specify your stopwords as a character vector
+docs <- tm_map(docs, removeWords, c("buy","qoo","it's","get","giftany","need","qoo10","vender","ecommendations","just","nil","can", "use", "user", "anytime", "anywhere", "using","feel","awesome","prefer","love","pay")) 
+# Remove punctuations
+docs <- tm_map(docs, removePunctuation)
+# Eliminate extra white spaces
+docs <- tm_map(docs, stripWhitespace)
+docs <- tm_map(docs, removeWords, c("buy","it's","get","giftany","need","qoo10","vender","ecommendations","just","nil","can", "use", "user", "anytime", "anywhere", "using","feel","awesome","prefer","love","pay")) 
+
+# Text stemming
+# docs <- tm_map(docs, stemDocument)
+#build term-document matrix
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+#generate wordcloud
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 2,
+          max.words=200, random.order=FALSE, rot.per=0, 
+          colors=brewer.pal(8, "Dark2"))
+
+##rating below 5
+table(data_rev$reason_recom_giftany[which(data_rev$recom_giftany < 5)])
+#generate wordcloud
+docs2 <- Corpus(VectorSource(data_rev$reason_recom_giftany[which(data_rev$recom_giftany < 5)]))
+inspect(docs2)
+docs <- docs2
+
+#text transformation
+#remove special characters
+#toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+#docs <- tm_map(docs, toSpace, "/")
+#docs <- tm_map(docs, toSpace, "@")
+#docs <- tm_map(docs, toSpace, "\\|")
+
+# Convert the data_rev$motiv_giftany to lower case
+docs <- tm_map(docs, content_transformer(tolower))
+
+# Remove numbers
+docs <- tm_map(docs, removeNumbers)
+
+# Remove english common stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+# specify your stopwords as a character vector
+docs <- tm_map(docs, removeWords, c("buy","qoo","it's","get","giftany","need","qoo10","vender","ecommendations","just","nil","can", "use", "user", "anytime", "anywhere", "using","feel","awesome","prefer","love","pay")) 
+# Remove punctuations
+docs <- tm_map(docs, removePunctuation)
+# Eliminate extra white spaces
+docs <- tm_map(docs, stripWhitespace)
+docs <- tm_map(docs, removeWords, c("buy","it's","get","giftany","need","qoo10","vender","ecommendations","just","nil","can", "use", "user", "anytime", "anywhere", "using","feel","awesome","prefer","love","pay")) 
+
+# Text stemming
+# docs <- tm_map(docs, stemDocument)
+#build term-document matrix
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+#generate wordcloud
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 2,
+          max.words=200, random.order=FALSE, rot.per=0, 
+          colors=brewer.pal(8, "Dark2"))
+
+
+table(data_rev$like_giftany)
+
+data_rev$like_giftany <- ifelse(data_rev$like_giftany %like% 'iscount', "discounts",data_rev$like_giftany)
+
+
+
+docs2 <- Corpus(VectorSource(data_rev$like_giftany))
+inspect(docs2)
+docs <- docs2
+
+#text transformation
+#remove special characters
+#toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+#docs <- tm_map(docs, toSpace, "/")
+#docs <- tm_map(docs, toSpace, "@")
+#docs <- tm_map(docs, toSpace, "\\|")
+
+# Convert the data_rev$motiv_giftany to lower case
+docs <- tm_map(docs, content_transformer(tolower))
+
+# Remove numbers
+docs <- tm_map(docs, removeNumbers)
+
+# Remove english common stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+# specify your stopwords as a character vector
+docs <- tm_map(docs, removeWords, c("buy","qoo","it's","get","giftany","need","qoo10","vender","ecommendations","just","nil","can", "use", "user", "anytime", "anywhere", "using","feel","awesome","prefer","love","pay")) 
+# Remove punctuations
+docs <- tm_map(docs, removePunctuation)
+# Eliminate extra white spaces
+docs <- tm_map(docs, stripWhitespace)
+docs <- tm_map(docs, removeWords, c("buy","it's","get","giftany","need","qoo10","vender","ecommendations","just","nil","can", "use", "user", "anytime", "anywhere", "using","feel","awesome","prefer","love","pay")) 
+
+# Text stemming
+# docs <- tm_map(docs, stemDocument)
+#build term-document matrix
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+#generate wordcloud
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 2,
+          max.words=200, random.order=FALSE, rot.per=0, 
+          colors=brewer.pal(8, "Dark2"))
+head(d)
+
+
+
+table(data_rev$dislike_giftany)
+
+docs2 <- Corpus(VectorSource(data_rev$dislike_giftany))
+inspect(docs2)
+docs <- docs2
+
+#text transformation
+#remove special characters
+#toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+#docs <- tm_map(docs, toSpace, "/")
+#docs <- tm_map(docs, toSpace, "@")
+#docs <- tm_map(docs, toSpace, "\\|")
+
+# Convert the data_rev$motiv_giftany to lower case
+docs <- tm_map(docs, content_transformer(tolower))
+
+# Remove numbers
+docs <- tm_map(docs, removeNumbers)
+
+# Remove english common stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+# specify your stopwords as a character vector
+docs <- tm_map(docs, removeWords, c("buy","qoo","it's","get","giftany","need","qoo10","vender","ecommendations","just","nil","can", "use", "user", "anytime", "anywhere", "using","feel","awesome","prefer","love","pay")) 
+# Remove punctuations
+docs <- tm_map(docs, removePunctuation)
+# Eliminate extra white spaces
+docs <- tm_map(docs, stripWhitespace)
+docs <- tm_map(docs, removeWords, c("buy","it's","get","giftany","need","qoo10","vender","ecommendations","just","nil","can", "use", "user", "anytime", "anywhere", "using","feel","awesome","prefer","love","pay")) 
+
+# Text stemming
+# docs <- tm_map(docs, stemDocument)
+#build term-document matrix
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+#generate wordcloud
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 2,
+          max.words=200, random.order=FALSE, rot.per=0, 
+          colors=brewer.pal(8, "Dark2"))
+head(d)
+
+
+
+
+
+tokens_ngrams(docs,2:2, concatenator = " ")
+
+docs_rev <- docs %>%
+unlist() %>%
+tokens() %>%
+tokens_ngrams(2:2, concatenator = " ") %>%
+unlist() %>%
+as.data.frame()
+
+
+docs <- docs_rev
+
+# Convert the data_rev$motiv_giftany to lower case
+docs <- tm_map(docs, content_transformer(tolower))
+
+# Remove numbers
+docs <- tm_map(docs, removeNumbers)
+
+# Remove english common stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+# specify your stopwords as a character vector
+docs <- tm_map(docs, removeWords, c("buy","qoo","it's","get","giftany","need","qoo10","vender","ecommendations","just","nil","can", "use", "user", "anytime", "anywhere", "using","feel","awesome","prefer","love","pay")) 
+# Remove punctuations
+docs <- tm_map(docs, removePunctuation)
+# Eliminate extra white spaces
+docs <- tm_map(docs, stripWhitespace)
+docs <- tm_map(docs, removeWords, c("buy","it's","get","giftany","need","qoo10","vender","ecommendations","just","nil","can", "use", "user", "anytime", "anywhere", "using","feel","awesome","prefer","love","pay")) 
+
+# Text stemming
+# docs <- tm_map(docs, stemDocument)
+#build term-document matrix
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+#generate wordcloud
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 2,
+          max.words=200, random.order=FALSE, rot.per=0, 
+          colors=brewer.pal(8, "Dark2"))
+head(d)
+
+#tagging dislike_giftany
+dislike <- data_rev$dislike_giftany
+dislike <- tolower(dislike)
+dislike <- ifelse(dislike %like% "merchant","giftcard",dislike)
+dislike <- ifelse(dislike %like% "website","website",dislike)
+dislike <- ifelse(dislike %like% "choice","giftcard",dislike)
+dislike <- ifelse(dislike %like% "select","giftcard",dislike)
+dislike <- ifelse(dislike %like% "deals","promotion",dislike)
+dislike <- ifelse(dislike %like% "cashback","promotion",dislike)
+dislike <- ifelse(dislike %like% "promo","promotion",dislike)
+dislike <- ifelse(dislike %like% "discount","promotion",dislike)
+dislike <- ifelse(dislike %like% "denom","denomination",dislike)
+dislike <- ifelse(dislike %like% "mobile app","app",dislike)
+dislike <- ifelse(dislike %like% "amount","denomination",dislike)
+dislike <- ifelse(dislike %like% "secure","safety",dislike)
+dislike <- ifelse(dislike %like% "safe","safety",dislike)
+dislike <- ifelse(dislike %like% "merchent","giftcard",dislike)
+dislike <- ifelse(dislike %like% "nothing","nothing",dislike)
+dislike <- ifelse(dislike %like% "none","nothing",dislike)
+dislike <- ifelse(dislike %like% "limit","denomination",dislike)
+dislike <- ifelse(dislike %like% "t&c","t&c",dislike)
+dislike <- ifelse(dislike %like% "giftcard","giftcard",dislike)
+dislike <- ifelse(dislike %like% "gift card","giftcard",dislike)
+dislike <- ifelse(dislike %like% "amex","payment",dislike)
+dislike <- ifelse(dislike %like% "uncertainty","safety",dislike)
+dislike <- ifelse(dislike %like% "nil","nothing",dislike)
+dislike <- ifelse(dislike %like% "na","nothing",dislike)
+dislike <- ifelse(dislike %like% "shop","giftcard",dislike)
+dislike <- ifelse(dislike %like% "expiry","giftcard",dislike)
+dislike <- ifelse(dislike %like% "ship","shipping",dislike)
+dislike <- ifelse(dislike %like% "good","nothing",dislike)
+dislike <- ifelse(dislike %like% "marketing","marketing",dislike)
+dislike <- ifelse(dislike %like% "no","nothing",dislike)
+dislike <- ifelse(dislike %like% "payment","payment",dislike)
+dislike <- ifelse(dislike %like% "//-","nothing",dislike)
+dislike <- str_replace(dislike,"-","nothing")
+dislike <- str_replace(dislike,"^.$","nothing")
+
+
+table(dislike)
+prop.table(table(dislike))*100
+
+table(data_rev$platform_giftany)
+platform <- data_rev$platform_giftany
+
+#tagging
+platform <- tolower(platform)
+platform <- ifelse(platform %like% "qoo10","Qoo10",platform)
+platform <- ifelse(platform %like% "fave","Fave",platform)
+platform <- ifelse(platform %like% "amazon","Amazon",platform)
+platform <- ifelse(platform %like% "lazada","Lazada",platform)
+platform <- ifelse(platform %like% "mooments","Mooments",platform)
+platform <- ifelse(platform %like% "apple","Apple",platform)
+platform <- ifelse(platform %like% "npn","NPN",platform)
+platform <- ifelse(platform %like% "zalor","Zalora",platform)
+platform <- ifelse(platform %like% "fuzzie","Fuzzie",platform)
+platform <- ifelse(platform %like% "shopee","Shopee",platform)
+platform <- ifelse(platform %like% "giftcard granny","Giftcard Granny",platform)
+platform <- ifelse(platform %like% "coles and westfield","Coles and Westfield",platform)
+platform <- ifelse(platform %like% "good","Good Dear",platform)
+platform <- ifelse(platform %like% "nil","No",platform)
+platform <- ifelse(platform %like% "no","No",platform)
+platform <- ifelse(platform %like% "na","No",platform)
+platform <- ifelse(platform %like% "unidays","Unidays",platform)
+platform <- ifelse(platform %like% "starbucks","Starbucks",platform)
+platform <- str_replace(platform,"-","No")
+platform <- str_replace(platform,"^.$","No")
+
+
+table(platform)
+prop.table(table(platform[which(platform != "No")]))*100 
+table(data_rev$other_comm_giftany)
+dislike <- data_rev$other_comm_giftany
+#tagging
+dislike <- tolower(dislike)
+dislike <- ifelse(dislike %like% "merchant","giftcard",dislike)
+dislike <- ifelse(dislike %like% "machant","giftcard",dislike)
+dislike <- ifelse(dislike %like% "store","giftcard",dislike)
+dislike <- ifelse(dislike %like% "offer","promotion",dislike)
+dislike <- ifelse(dislike %like% "sale","promotion",dislike)
+
+dislike <- ifelse(dislike %like% "website","website",dislike)
+dislike <- ifelse(dislike %like% "choice","giftcard",dislike)
+dislike <- ifelse(dislike %like% "select","giftcard",dislike)
+dislike <- ifelse(dislike %like% "deals","promotion",dislike)
+dislike <- ifelse(dislike %like% "cashback","promotion",dislike)
+dislike <- ifelse(dislike %like% "promo","promotion",dislike)
+dislike <- ifelse(dislike %like% "discount","promotion",dislike)
+dislike <- ifelse(dislike %like% "denom","denomination",dislike)
+dislike <- ifelse(dislike %like% "mobile app","app",dislike)
+dislike <- ifelse(dislike %like% "amount","denomination",dislike)
+dislike <- ifelse(dislike %like% "secure","safety",dislike)
+dislike <- ifelse(dislike %like% "safe","safety",dislike)
+dislike <- ifelse(dislike %like% "merchent","giftcard",dislike)
+dislike <- ifelse(dislike %like% "nothing","nothing",dislike)
+dislike <- ifelse(dislike %like% "none","nothing",dislike)
+dislike <- ifelse(dislike %like% "limit","denomination",dislike)
+dislike <- ifelse(dislike %like% "t&c","t&c",dislike)
+dislike <- ifelse(dislike %like% "giftcard","giftcard",dislike)
+dislike <- ifelse(dislike %like% "gift card","giftcard",dislike)
+dislike <- ifelse(dislike %like% "amex","payment",dislike)
+dislike <- ifelse(dislike %like% "uncertainty","safety",dislike)
+dislike <- ifelse(dislike %like% "nil","nothing",dislike)
+dislike <- ifelse(dislike %like% "na","nothing",dislike)
+dislike <- ifelse(dislike %like% "shop","giftcard",dislike)
+dislike <- ifelse(dislike %like% "expiry","giftcard",dislike)
+dislike <- ifelse(dislike %like% "ship","shipping",dislike)
+dislike <- ifelse(dislike %like% "good","nothing",dislike)
+dislike <- ifelse(dislike %like% "marketing","marketing",dislike)
+dislike <- ifelse(dislike %like% "no","nothing",dislike)
+dislike <- ifelse(dislike %like% "payment","payment",dislike)
+dislike <- ifelse(dislike %like% "//-","nothing",dislike)
+dislike <- str_replace(dislike,"-","nothing")
+dislike <- str_replace(dislike,"^.$","nothing")
+dislike <- ifelse(dislike %like% "that","nothing",dislike)
+dislike <- ifelse(dislike %like% "will purchase","nothing",dislike)
+dislike <- ifelse(dislike %like% "keep it up","nothing",dislike)
+
+table(dislike)
+prop.table(table(dislike[which(dislike != "nothing")])) * 100 
+
+
+
