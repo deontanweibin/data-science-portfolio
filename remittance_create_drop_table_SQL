@@ -1,0 +1,46 @@
+--run the below all at once
+--STEP 1--
+DROP TABLE nsu_vpc;
+CREATE TABLE nsu_vpc AS 
+(
+SELECT nsu.acct_msisdn AS nsu_msisdn, vpc.acct_msisdn AS vpc_msisdn,
+(CASE 
+WHEN nsu.acct_id IS NULL THEN 'VPC'
+ELSE 'NSU'
+END) cat
+FROM
+(
+--NSU table
+SELECT a.acct_id, a.acct_msisdn
+FROM EDWDM.TEDW_SINGCASH_ACCOUNT a
+INNER JOIN EDWDM.TEDW_SINGCASH_DAILY_SUBBASE b ON a.acct_id = b.acct_id AND (CONSENT_SMS_FROM_DASH IS NULL OR CONSENT_SMS_FROM_DASH = 'Y') 
+WHERE a.acct_stat = 'A'
+AND a.layr_name LIKE '%Customers%'
+AND a.auto_signup = 0
+--------------------------CHANGE DATE--------------------------
+AND a.dt_created BETWEEN TO_DATE('01-May-2019','DD-Mon-YYYY') AND TO_DATE('05-May-2019','DD-Mon-YYYY')) nsu
+
+FULL OUTER JOIN
+
+(--VPC table
+SELECT a.scr_acct_id, a.acct_msisdn , CONSENT_SMS_FROM_DASH, MIN(a.txn_id) AS vpc_id--, row_number() OVER (PARTITION BY scr_acct_id ORDER BY scr_acct_id)--, MIN(txn_id) AS vpc_id
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM a
+INNER JOIN EDWDM.TEDW_SINGCASH_DAILY_SUBBASE b ON a.scr_acct_id = b.acct_id AND (CONSENT_SMS_FROM_DASH IS NULL OR CONSENT_SMS_FROM_DASH = 'Y') 
+WHERE a.svc_class_name IN ('ISO8583 Visa Paywave','ISO8583 Visa Paywave International','ISO8583 Visa Online','ISO8583 Visa Online International')
+AND a.stat LIKE '%PST%'
+AND a.data_txn_rfnd = 'False'
+--------------------------CHANGE DATE--------------------------
+AND a.txn_dt BETWEEN TO_DATE('01-May-2019','DD-Mon-YYYY') AND TO_DATE('05-May-2019','DD-Mon-YYYY')
+GROUP BY a.scr_acct_id, a.acct_msisdn, b.CONSENT_SMS_FROM_DASH) vpc
+ON nsu.acct_id = vpc.scr_acct_id ) ;
+
+
+--STEP 2--
+SELECT nsu_msisdn AS msisdn, cat FROM nsu_vpc WHERE cat = 'NSU'
+UNION
+SELECT vpc_msisdn AS msisdn, cat FROM nsu_vpc WHERE cat = 'VPC'
+
+
+
+
+
