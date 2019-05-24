@@ -8,12 +8,19 @@
 --audience: business and sales team
 
 
-SELECT demo.acct_id, demo.acct_natly, demo.scndry_acct_idn_type, to_char(demo.dt_vfyd,'DD-Mon-YYYY') AS vfyd_date, txn.txn_date, txn.min_txn_id, txn.nett_spends
+DROP TABLE first_remit;
+
+CREATE TABLE first_remit AS (
+--revised query
+SELECT acct_id, acct_natly, scndry_acct_idn_type, vfyd_date, nett_spends, fees, fx, txn_id, txn_date
+FROM
+(
+SELECT demo.acct_id, demo.acct_natly, demo.scndry_acct_idn_type, to_char(demo.dt_vfyd,'DD-Mon-YYYY') AS vfyd_date, txn.txn_date, txn.txn_id, txn.nett_spends, txn.fees, txn.fx, txn_dt - dt_vfyd AS date_diff
 FROM EDWDM.TEDW_SINGCASH_ACCOUNT demo
 LEFT JOIN (
-SELECT b.scr_acct_id, a.SRC_DEBIT + FX_MARGIN AS Nett_Spends, to_char(a.TXN_DT,'DD-Mon-YYYY') AS txn_date, b.min_txn_id
+SELECT b.scr_acct_id, a.SRC_DEBIT + FX_MARGIN AS Nett_Spends, a.src_fees*-1 AS Fees, a.fx_margin*-1 AS FX, to_char(a.TXN_DT,'DD-Mon-YYYY') AS txn_date,txn_dt, b.txn_id
 FROM (
-SELECT DISTINCT scr_acct_id, MIN(txn_id) OVER (PARTITION BY scr_acct_id ORDER BY txn_id) AS min_txn_id
+SELECT scr_acct_id,txn_id
 FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM
 WHERE brnd_grp = 'International Money Remittance'
 AND STAT LIKE '%PST%' --do this instead of putting as conditions for hub table as hub table includes data_txn_rfnd = 'TRUE' and includes test transactions by the test users
@@ -23,13 +30,19 @@ AND CUST_MSISDN != '6596510899'
 And data_txn_rfnd = 'False'
 ) b
 INNER JOIN EDWDM.TEDW_SINGCASH_SALESJOURNAL_HUB a
-ON a.scr_ref = b.min_txn_id
-WHERE a.txn_dt >= TRUNC(SYSDATE-90)
+ON a.scr_ref = b.txn_id
 ) txn
 ON demo.acct_id = txn.scr_acct_id
 WHERE demo.acct_vfy_lvl LIKE '%Remittance%'
-AND demo.acct_stat = 'A'
-AND demo.layr_name LIKE '%Customers%'
-AND demo.dt_vfyd >= TRUNC(SYSDATE-90)
+AND demo.acct_trst_lvl LIKE '%Remittance%'
+--AND demo.acct_stat = 'A'
+--AND demo.layr_name LIKE '%Customers%'
+AND demo.dt_vfyd >= TRUNC(SYSDATE-70)
+--AND txn_dt - dt_vfyd >= 0
+) remit
+WHERE date_diff >= 0
+--GROUP BY acct_id, acct_natly, scndry_acct_idn_type, vfyd_date
+) ;
 
+SELECT * FROM first_remit ;
 
