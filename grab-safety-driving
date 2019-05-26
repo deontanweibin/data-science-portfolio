@@ -1,0 +1,23 @@
+#read data and do eda
+
+library(DataExplorer)
+library(data.table)
+
+data <- read.csv("C:\\Users\\P1318124\\Desktop\\BA Projects\\Grab\\part-00000-e6120af0-10c2-4248-97c4-81baf4304e5c-c000.csv",header=TRUE,stringsAsFactors=FALSE,nrows=20)
+
+plot_str(data) #11 variables, all numeric
+
+#missing values
+plot_missing(data) #no missing values
+
+#plot continuous variables
+plot_density(data)
+
+#optimised file reading
+url <- "C:\\Users\\P1318124\\Desktop\\BA Projects\\Grab\\part-00000-e6120af0-10c2-4248-97c4-81baf4304e5c-c000.csv"
+
+#readLines(url)
+dt <- fread(url)
+
+
+
