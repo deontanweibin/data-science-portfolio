@@ -1,0 +1,129 @@
+#perform time series forecast for each service class name
+#then push to power bi R script
+
+library(xlsx)
+library(readxl)
+library(dplyr)
+library(forecast)
+library(tidyquant)
+library(timetk)
+library(sweep)
+library(tidyr)
+library(sqldf)
+
+data <- read_excel("C:\\Users\\P1318124\\Desktop\\Remittance\\Daily Remittance\\daily_remittance.xlsx","Corridor Daily")
+
+#select certain channels (SVC_CLASS_NAME)
+data <- sqldf("SELECT * FROM data WHERE SVC_CLASS_NAME IN ('Telkomsel PTPOS mobile',
+'Tranglo Philippines Cebuana Mobile','Tranglo Philippines Lhuillier Mobile',
+'Tranglo Philippines Mobile','TransferTo Indonesia Mobile',
+'Telkomsel LinkAja mobile','Telkomsel TCash mobile')")
+
+table(data$SVC_CLASS_NAME)
+
+data$SVC_CLASS_NAME[which(data$SVC_CLASS_NAME == 'Telkomsel LinkAja mobile' |
+data$SVC_CLASS_NAME == 'Telkomsel TCash mobile')] <- "Telkomsel LinkAja-TCash mobile"
+
+
+#from 3 June 2018 since one of the channels started to be continuously used only on and after 1 Jun 2018
+data <- data %>%
+filter(as.Date(data$TXN_DATE) >= as.Date('2018-06-03')) 
+
+data <- data %>%
+filter(as.Date(data$TXN_DATE) <= as.Date('2019-05-25'))
+
+
+
+tv_daily <- data %>%
+mutate(daily = as.Date(TXN_DATE) #,
+#day = day(TXN_DATE),
+#month = month(TXN_DATE,label=TRUE),
+#year = year(TXN_DATE)
+) %>%
+#group_by(year,month,day, daily, SVC_CLASS_NAME ) %>%
+group_by(daily, SVC_CLASS_NAME ) %>%
+summarise(tv = sum(NETT_SPENDS))
+
+
+head(tv_daily, n=20)
+tail(tv_daily, n=20)
+
+#visualise tv_daily
+
+tv_daily %>%
+ggplot(aes(x=daily, y=tv, group = SVC_CLASS_NAME)) + 
+geom_area(aes(fill = SVC_CLASS_NAME), position = "stack") + 
+labs(title="TV Daily by Channel", x="", y="TV",
+subtitle="01 April 2018 to 27 May 2019") +
+scale_y_continuous() +
+theme_tq()
+
+#create list of groups for grouped time series
+tv_daily_nest <- tv_daily %>%
+select(SVC_CLASS_NAME,daily,tv) %>%
+group_by(SVC_CLASS_NAME) %>%
+nest(.key="data.tbl")
+
+tv_daily_nest
+
+#convert to ts timeseries object
+tv_daily_nest_ts <- tv_daily_nest %>%
+mutate(data.ts = map(.x = data.tbl,
+.f = tk_ts,
+select = -daily,
+start = as.Date('2018-06-03'),
+freq = 7))
+
+tv_daily_nest_ts
+
+#model time series with ets model
+tv_daily_nest_fit <- tv_daily_nest_ts %>%
+mutate(fit.ets = map(data.ts,ets))
+tv_daily_nest_fit
+
+#get model parameters for each channel (SVC_CLASS_NAME)
+as.data.frame(tv_daily_nest_fit %>%
+mutate(tidy = map(fit.ets,sw_tidy)) %>%
+unnest(tidy, .drop=TRUE) %>%
+spread(key=SVC_CLASS_NAME,value=estimate)
+)
+
+#view model accuracies for each channel 
+tv_daily_nest_fit %>%
+mutate(glance = map(fit.ets, sw_glance)) %>%
+unnest(glance,.drop=TRUE)
+
+#show residuals
+augment_fit_ets <- tv_daily_nest_fit %>%
+mutate(augment = map(fit.ets,sw_augment, timetk_idx = TRUE, rename_index="date")) %>%
+unnest(augment, .drop=TRUE)
+
+augment_fit_ets
+
+#plot time series
+augment_fit_ets %>%
+ggplot(aes(x=date, y=.resid, group = SVC_CLASS_NAME)) + 
+geom_hline(yintercept = 0,color = "grey") +
+geom_line(color=palette_light()[[2]]) +
+geom_smooth(method = "loess") +
+labs(title="TV Daily by Channel",subtitle="ETS Model Residuals",x="") +
+theme_tq() +
+facet_wrap(~SVC_CLASS_NAME,scale="free_y",ncol=4) + 
+scale_x_date(date_labels="%Y")
+
+#decompositions
+tv_daily_nest_fit %>% 
+mutate(decomp = map(fit.ets, sw_tidy_decomp, timetk_idx = TRUE, rename_index = "date")) %>%
+unnest(decomp)
+
+#forecasting the model
+tv_daily_nest_fc <- tv_daily_nest_fit %>%
+mutate(fc.ets = map(fit.ets,forecast,h=30))
+tv_daily_nest_fc
+
+#tidy forecast
+tv_daily_nest_fc_tidy <- tv_daily_nest_fc %>%
+mutate(sweep = map(fc.ets, sw_sweep, fitted = FALSE, timetk_idx = TRUE)) %>%
+unnest(sweep)
+tv_daily_nest_fc_tidy
+
