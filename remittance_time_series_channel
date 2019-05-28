@@ -1,6 +1,9 @@
 #perform time series forecast for each service class name
 #then push to power bi R script
 
+#perform time series forecast for each service class name
+#then push to power bi R script
+
 library(xlsx)
 library(readxl)
 library(dplyr)
@@ -32,6 +35,16 @@ filter(as.Date(data$TXN_DATE) >= as.Date('2018-06-03'))
 data <- data %>%
 filter(as.Date(data$TXN_DATE) <= as.Date('2019-05-25'))
 
+#split train and test data
+tail(data[floor(0.8*nrow(data)),])
+#2019-03-15, hence choose closest Saturday as cut-off for train data
+train_data <- data %>%
+filter(as.Date(TXN_DATE) < as.Date('2019-03-17'))
+
+test_data <- data %>%
+filter(as.Date(TXN_DATE) >= as.Date('2019-03-17'))
+
+data <- train_data
 
 
 tv_daily <- data %>%
@@ -118,7 +131,7 @@ unnest(decomp)
 
 #forecasting the model
 tv_daily_nest_fc <- tv_daily_nest_fit %>%
-mutate(fc.ets = map(fit.ets,forecast,h=30))
+mutate(fc.ets = map(fit.ets,forecast,h=90))
 tv_daily_nest_fc
 
 #tidy forecast
@@ -126,4 +139,22 @@ tv_daily_nest_fc_tidy <- tv_daily_nest_fc %>%
 mutate(sweep = map(fc.ets, sw_sweep, fitted = FALSE, timetk_idx = TRUE)) %>%
 unnest(sweep)
 tv_daily_nest_fc_tidy
+
+tv_daily_nest_fc_tidy <- as.data.frame(tv_daily_nest_fc_tidy)
+tail(tv_daily_nest_fc_tidy)
+
+
+
+write.csv(tv_daily_nest_fc_tidy[which(tv_daily_nest_fc_tidy$key == 'forecast'),],"C:\\Users\\P1318124\\Desktop\\BA Projects\\Remittance_BA\\Remittance_Time_Series\\remittance_time_series_svc_class_name_fc_v2.csv",row.names=FALSE)
+
+
+
+
+
+
+
+
+
+
+
 
