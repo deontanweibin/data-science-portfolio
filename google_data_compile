@@ -1,0 +1,1118 @@
+#install.packages("stringr", repos="http://cran.us.r-project.org")
+library(stringr)
+
+library(dplyr)
+library(lubridate)
+library(readxl)
+library(xlsx)
+library(openxlsx)
+library(scales)
+library(sqldf)
+library(data.table)
+
+
+#13 Jan 2019
+#08 Feb 2019
+google_compile_1 <- read_excel("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Google\\Google April\\invoice_details_with_fx_SINGTEL_DCB_201804.xlsx",1)
+google_compile_2 <- read_excel("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Google\\Google May\\invoice_details_with_fx_v3_SINGTEL_DCB_201805.xlsx",1)
+google_compile_3 <- read_excel("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Google\\Google June\\invoice_details_with_fx_v3_SINGTEL_DCB_201806.xlsx",1)
+google_compile_4 <- read_excel("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Google\\Google July\\invoice_details_with_fx_v3_SINGTEL_DCB_201807.xlsx",1)
+google_compile_5 <- read_excel("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Google\\Google August\\invoice_details_with_fx_v3_SINGTEL_DCB_201808.xlsx",1)
+google_compile_6 <- read_excel("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Google\\Google September\\invoice_details_with_fx_v3_SINGTEL_DCB_201809.xlsx",1)
+google_compile_7 <- read_excel("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Google\\Google October\\invoice_details_with_fx_v3_SINGTEL_DCB_201810.xlsx",1)
+google_compile_8 <- read_excel("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Google\\Google November\\invoice_details_with_fx_v3_SINGTEL_DCB_201811.xlsx",1)
+google_compile_9 <- read_excel("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Google\\Google December\\invoice_details_with_fx_v3_SINGTEL_DCB_201812.xlsx",1)
+google_compile_10 <- read_excel("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Google\\Google January\\invoice_details_with_fx_v3_SINGTEL_DCB_201901.xlsx",1)
+google_compile_11 <- read_excel("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Google\\Google February 2019\\invoice_details_with_fx_v3_SINGTEL_DCB_201902.xlsx",1)
+google_compile_12 <- read_excel("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Google\\Google March 2019\\invoice_details_with_fx_v3_SINGTEL_DCB_201903.xlsx",1)
+google_compile_13 <- read_excel("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Google\\Google April 2019\\invoice_details_with_fx_v3_SINGTEL_DCB_201904.xlsx",1)
+
+colnames(google_compile_1)
+colnames(google_compile_2)
+colnames(google_compile_3)
+colnames(google_compile_4)
+colnames(google_compile_5)
+colnames(google_compile_6)
+colnames(google_compile_7)
+colnames(google_compile_8)
+colnames(google_compile_9)
+colnames(google_compile_10)
+colnames(google_compile_11)
+colnames(google_compile_12)
+
+
+dim(google_compile_1)
+dim(google_compile_2)
+dim(google_compile_3)
+dim(google_compile_4)
+dim(google_compile_5)
+dim(google_compile_6)
+dim(google_compile_7)
+dim(google_compile_8)
+dim(google_compile_9)
+dim(google_compile_10)
+dim(google_compile_11)
+dim(google_compile_12)
+
+#MAU (30 days)
+mau_1 <- google_compile_1 %>%
+filter(Event=='CHARGE') %>%
+summarise(mau = n_distinct(MSISDN))
+
+mau_2 <- google_compile_1 %>%
+filter(Event=='CHARGE') %>%
+summarise(mau = n_distinct(MSISDN))
+
+mau <- function(x) {
+mau_res <- x %>%
+filter(Event=='CHARGE') %>%
+filter(transaction_status == 'EP_SUCCESS')%>%
+summarise(mau = n_distinct(MSISDN))
+print(mau_res)
+}
+
+mau(google_compile_1)
+mau(google_compile_2)
+mau(google_compile_3)
+mau(google_compile_4)
+mau(google_compile_5)
+mau(google_compile_6)
+mau(google_compile_7)
+mau(google_compile_8)
+mau(google_compile_9)
+mau(google_compile_10)
+mau(google_compile_11)
+mau(google_compile_12)
+
+google_compile_1$RevshareCategory <- 'NA'
+colnames(google_compile_1)[8] <- 'Timestamp'
+
+choosing <- function(x) {
+selected <- x %>%
+select('CorrelationId','Event','Timestamp','Payment Description','Subscription Id','Merchant Contact','MSISDN','transaction_status','app','item_price_in_local_currency','total_amount_in_local_currency','RevshareCategory')
+}
+
+google_rev_1 <- choosing(google_compile_1)
+google_rev_2 <- choosing(google_compile_2)
+google_rev_3 <- choosing(google_compile_3)
+google_rev_4 <- choosing(google_compile_4)
+google_rev_5 <- choosing(google_compile_5)
+google_rev_6 <- choosing(google_compile_6)
+google_rev_7 <- choosing(google_compile_7)
+google_rev_8 <- choosing(google_compile_8)
+google_rev_9 <- choosing(google_compile_9)
+google_rev_10 <- choosing(google_compile_10)
+google_rev_11 <- choosing(google_compile_11)
+google_rev_12 <- choosing(google_compile_12)
+google_rev_13 <- choosing(google_compile_13)
+
+google_rev <- rbind(google_rev_1,google_rev_2,google_rev_3,google_rev_4,google_rev_5,google_rev_6,google_rev_7,google_rev_8,google_rev_9,google_rev_10,google_rev_11,google_rev_12,google_rev_13)
+
+colnames(google_rev)[3] <- 'TimeStamp'
+colnames(google_rev)[4] <- 'Payment.Description'
+colnames(google_rev)[5] <- 'Subscription.Id'
+colnames(google_rev)[6] <- 'Merchant.Contact'
+colnames(google_rev)
+google_rev$Date <- as.factor(as.Date(as.factor(google_rev$TimeStamp),format='%Y-%m-%d'))
+google_rev$TimeStamp <- as.factor(google_rev$TimeStamp)
+
+google_rev <- as.data.frame(google_rev)
+
+google_rev <- google_rev[,c(1,3,4,5,6,7,8,9,10,11,13,2,12)]
+
+google_rev$subscribe <- ifelse(google_rev$RevshareCategory=='APP_SUBSCRIPTION',"Subscription","Non-subscription")
+
+google_rev$app[which(google_rev$app %like% "MapleStory M")] <- "MapleStory M"
+
+
+############################################
+#########EXPORT AS CSV####################
+###########################################
+
+write.csv(as.data.frame(google_rev),"C:\\Users\\P1318124\\Desktop\\Apple & Google\\google_play_data_Apr2019.csv",row.names=FALSE)
+#write.csv(as.data.frame(google_rev),"C:\\Users\\P1318124\\Desktop\\Apple & Google\\google_play_data_13012019.csv",row.names=FALSE)
+
+###########################################
+###########################################
+###########################################
+
+#google_old <- read.csv("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\google_play_data_21122018.csv",header=TRUE)
+#colnames(google_old)
+#head(google_old)
+
+
+
+#google_compile <- read.csv("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\google_compile.csv",header=TRUE)
+
+#google_day <- read_excel("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\2017-2018\\invoice_details_with_fx_v3_SINGTEL_DCB_201811-00000-of-00005.xlsx",1)
+#google_day <- as.data.frame(google_day)
+
+#google_day_rev <- google_day %>%
+#select(CorrelationId, Timestamp, 'Payment Description','Subscription Id','Merchant Contact',MSISDN,transaction_status,app,item_price_in_local_currency,total_amount_in_local_currency)
+
+
+#google_compile <- google_day_rev
+
+#colnames(google_day_rev) <- colnames(google_compile)
+#google_day_rev$CorrelationId <- as.factor(google_day_rev$CorrelationId)
+#google_day_rev$TimeStamp <- as.factor(google_day_rev$TimeStamp)
+#google_day_rev$Payment.Description <- as.factor(google_day_rev$Payment.Description)
+#google_day_rev$Subscription.Id <- as.factor(google_day_rev$Subscription.Id)
+#google_day_rev$Merchant.Contact <- as.factor(google_day_rev$Merchant.Contact)
+#google_day_rev$transaction_status <- as.factor(google_day_rev$transaction_status)
+#google_day_rev$app <- as.factor(google_day_rev$app)
+#google_day_rev$Date <- as.Date(google_day_rev$TimeStamp,format='%Y-%m-%d')
+
+#google_compile <- rbind(google_compile,google_day_rev)
+
+
+#dim(google_compile)
+
+##########################
+
+#write.csv(google_compile,"C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\google_compile.csv",row.names=FALSE)
+
+###########################
+###########################
+
+#google_compile$MSISDN <- as.factor(google_compile$MSISDN)
+
+#google_compile$Date <- as.Date(google_compile$TimeStamp,format='%Y-%m-%d')
+
+#google_filter <- google_compile %>%
+#filter(transaction_status == "EP_SUCCESS")
+
+#write.csv(google_filter,"C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\google_filter.csv",row.names=FALSE)
+
+
+#google_compile_top_sum <- google_compile %>%
+#filter(transaction_status == "EP_SUCCESS") %>%
+#group_by(app) %>%
+#summarise(nsum=sum(total_amount_in_local_currency), ntransact = n(), npeople = n_distinct(MSISDN)) %>%
+#arrange(desc(nsum))
+
+#head(google_compile_top_sum,n=10)
+
+#google_compile_top_sum <- as.data.frame(google_compile_top_sum)
+
+#write.csv(google_compile_top_sum,"C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\google_compile_top_sum.csv",row.names=FALSE)
+
+#do RFM on merchants, i.e. apps
+
+
+
+
+google <- read.csv("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\google_filter_Mar2019.csv",header=TRUE)
+google_sum <- read.csv("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\google_compile_top_sum_Mar2019.csv",header=TRUE)
+
+
+google_rev <- google %>%
+select(app,Date,total_amount_in_local_currency)
+
+
+#######CLUSTERING#######
+
+library(factoextra)
+library(silhouette)
+library(cluster)
+library(plot3Drgl)
+library(plot3D)
+library(tidyr)
+library(pastecs)
+library(fpc)
+library(ggplot2)
+library(dplyr)
+library(plotly)
+library(lubridate)
+
+data <- read.csv("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\google_compile.csv",header=TRUE)
+data$Date <- as.Date(data$TimeStamp,format='%Y-%m-%d')
+
+data_rev <- data %>%
+select(app,Date,total_amount_in_local_currency)
+
+#Convert date column to date type
+#data_rev$TXN_DT <- as.character(data_rev$TXN_DT)
+#data_rev$TXN_DT <- dmy(data_rev$TXN_DT)
+#data_rev$TXN_DT <- as.Date(data_rev$TXN_DT,format='%Y/%m/%d')
+
+#Create datediff column to find number of days since last purchase for recency
+data_rev$days_since <- as.numeric(difftime(time1='2018-11-01',time2=data_rev$Date,unit="days"))
+
+colnames(data_rev)[3] <- "ORIG_AMT"
+
+data_rev$app <- tolower(data_rev$app)
+
+#Create dataset to show customer's recency, frequency and monetary information
+merchants <- data_rev %>%
+group_by(app) %>%
+summarise(recency=min(days_since),frequency=n(),monetary = mean(ORIG_AMT, na.rm = TRUE))
+write.csv(merchants,"C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\merchants_google_play_data_Mar2019.csv",row.names=FALSE)
+
+
+
+merchants <- as.data.frame(merchants)
+
+#Data Exploration
+##Descriptive Statistics
+options(digits = 2, scipen = 99)
+stat.desc(select(merchants, -app))
+
+str(merchants)
+
+#frequency
+ggplot(merchants, aes(x = frequency)) +
+   geom_histogram(bins = 20, fill = "steelblue") +
+   theme_classic() +
+   labs(x = "", title = "Purchase frequency") +
+   scale_x_continuous(breaks = c(0,1, 2, 3))
+
+dim(filter(merchants, frequency == 1))[1]/dim(merchants)[1]
+#only 59% of merchants had only 1 transaction
+dim(filter(merchants, frequency == 2))[1]/dim(merchants)[1]
+#only 10% of merchants had only 2 transactions
+dim(filter(merchants, frequency == 3))[1]/dim(merchants)[1]
+#only 5% of merchants had only 3 transactions
+dim(filter(merchants, frequency >= 3))[1]/dim(merchants)[1]
+#only 31% of merchants had only 3 transactions
+
+
+#recency
+ggplot(merchants, aes(x = recency)) +
+   geom_histogram(fill = "steelblue") +
+   theme_classic() +
+   labs(x = "", y = "", title = "Recency in Days") +
+  scale_x_continuous(breaks = c(0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300,330,360,390,420,450,480,510,540,570,600))
+
+#30 days between 01 Oct 2018 and 1 Nov 2018
+dim(filter(merchants, recency < 32))[1]/dim(merchants)[1]
+#13% of merchants have transactions within 1 month between Oct 2018 and Nov 2018
+
+dim(filter(merchants, recency > 365))[1]/dim(merchants)[1]
+#40% of merchants did not have transactions in 1 year to Nov 2018
+
+#monetary
+summary(merchants$monetary)
+
+ggplot(merchants, aes(x = monetary)) +
+   geom_histogram(bins = 20, fill = "steelblue") +
+   theme_classic() +
+   labs(x = "average amount", title = "Average purchase amount")
+
+ggplot(merchants, aes(x = monetary)) +
+   geom_histogram(bins = 20, fill = "steelblue") +
+   theme_classic() +
+   labs(x = "amount (log10)", 
+        title = "Average purchase amount\n (Data are log transformed to ease visualization)") +
+   scale_x_log10()
+
+#Statistical Segmentation
+##Data Preparation
+## Remove customer_id column and set as row names
+merchants <- as.data.frame(merchants)
+#apply(merchants$app,1,str_replace_all(x, "[[:punct:]]", " ")
+
+merchants$app_id <- c(1:length(merchants$app))
+
+merchants_app_id_list <- merchants[,c(1,5)]
+row.names(merchants) <- merchants$app_id
+merchants <- select(merchants, -app)
+merchants <- select(merchants, -app_id)
+
+## Scale data to balance the influence of variables measured on different scales and/or with vastly different ## variances
+clust_data <- scale(merchants)
+
+#Clustering method
+set.seed(11)
+hc.complete =hclust (dist(clust_data), method = "complete")
+hc.average =hclust (dist(clust_data), method = "average")
+hc.ward =hclust (dist(clust_data), method = "ward.D2")
+
+#Dendograms
+#plot(hc.complete, main = "Complete Linkage", xlab = "", sub = "", cex = .9)
+#plot(hc.average, main = "Average Linkage", xlab = "", sub = "", cex = .9)
+plot(hc.ward, main = "Cluster Tree", xlab = "", sub = "", cex = .9)
+rect.hclust(hc.ward, k = 5, border = "darkred")
+plot(hc.ward, main = "Cluster Tree cut at 6 clusters", xlab = "", sub = "", cex = .9)
+abline(h = 82, col = "red") #??
+#Cluster tree cut at 6 clusters
+clusters <- cutree(hc.ward, 3)
+table(clusters)
+
+#Assign customers to clusters
+merchants$cluster <- clusters
+
+profiles <- merchants %>% 
+  group_by(cluster) %>%
+  summarise_all(funs(mean))
+
+cluster_counts <- merchants %>% 
+  group_by(cluster) %>% 
+  summarise(counts = n())
+
+profiles <- mutate(profiles, counts = cluster_counts$counts) 
+profiles
+
+merchants$cluster <- as.factor(merchants$cluster)
+
+
+#Clustering visualisation
+#monetary vs frequency
+ggplot(data = merchants,
+       aes(x = frequency, y = monetary, colour = cluster, shape = cluster)) +
+  geom_point() +
+  theme_dark() +
+  labs(title = "average amount spent vs. frequency", 
+       shape = "merchants\nclusters", colour = "merchants\nclusters")
+#monetary vs recency
+ggplot(data = merchants,
+       aes(x = recency, y = monetary, colour = cluster, shape = cluster)) +
+  geom_point() +
+  theme_dark() +
+  labs(title = "average amount spent vs recency",  shape = "cluster", colour = "cluster")
+
+## Project clusters onto the first 2 principal components
+
+prin_comp <- princomp(clust_data)
+nComp <- 2
+project <- predict(prin_comp, newdata=clust_data)[,1:nComp]
+
+## Create dataframe with transformed data
+
+project_data <- cbind(as.data.frame(project),
+                      cluster = as.factor(clusters))
+
+ggplot(project_data, aes(x=Comp.1, y=Comp.2)) +
+   geom_point(aes(shape=cluster, colour = cluster)) +
+   theme_dark() +
+   labs(x = "Principal Component 1", y = "Principal Component 2")
+
+merchants_comb <- cbind(merchants_app_id_list,merchants)
+write.csv(merchants_comb,"C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\merchants_comb_Mar2019.csv",row.names=FALSE)
+
+
+
+
+#Evaluating clusters
+clust_no <- 3
+
+set.seed(12)
+cboot_hclust <- clusterboot(clust_data, 
+                            clustermethod = hclustCBI,
+                            method = "ward.D2", 
+                            k = clust_no)
+
+bootMean_data <- data.frame(cluster = 1:3, bootMeans = cboot_hclust$bootmean)
+
+#Visualise evaluation results
+#A rule of thumb for interpreting stability values (Jaccard similarity value) suggests that clusters scored below 0.6 should be considered unstable.
+#Those between 0.6 and 0.75 are measuring patterns to a reasonable degree. 
+#Scores above 0.8 indicate highly stable clusters.
+
+p <- ggplot(data = bootMean_data, aes(x = cluster, y = bootMeans)) +
+     geom_point(aes(colour = "darkred", size = 1)) +
+     geom_hline(yintercept = c(0.6, 0.8)) +
+     labs(y = "stability", title = "Cluster Stability Evaluation") +
+     theme(legend.position="none")
+
+ggplotly(p)
+
+#End.
+
+scatter3D(merchants$recency,merchants$frequency,merchants$monetary,phi=0,bty="g")
+
+hist3D_fancy(merchants$recency,merchants$frequency,merchants$monetary)
+library(plot3Drgl)
+plotrgl()
+
+#silhouette
+#cl <- hclust(as.dist(clust_data,diag = TRUE, upper = TRUE), method= 'ward.D2')
+#sil_cl <- silhouette(cutree(cl, h=82) ,as.dist(clust_data), title=title(main = 'Good'))
+
+#rownames(sil_cl) <- rownames(clust_data)
+
+#plot(sil_cl)
+
+#Average Silhouette Width
+#fviz_dend(hc.ward, show_labels = FALSE, rect = TRUE)
+
+hc.cut <- hcut(clust_data, k = 6, hc_method = "ward.D2")
+
+
+fviz_silhouette(hc.cut) #Average Silhouette Width is 0.385, which is higher than k=3,4,5. Hence shoose k=6.
+#k=6 clusters
+#  cluster  size ave.sil.width
+#1       1 10698          0.42
+#2       2  3240          0.24
+#3       3  3073          0.55
+#4       4   317          0.48
+#5       5  2010          0.14
+#6       6  1706          0.48
+
+#k=5 clusters
+# cluster  size ave.sil.width
+#1       1 10698          0.46
+#2       2  3240          0.26
+#3       3  3073          0.59
+#4       4   317          0.48
+#5       5  3716          0.12
+ 
+#k=4 clusters
+#  cluster  size ave.sil.width
+#1       1 10698          0.50
+#2       2  3557          0.17
+#3       3  3073          0.59
+#4       4  3716          0.12
+
+#k=3 clusters
+#  cluster  size ave.sil.width
+#1       1 10698          0.54
+#2       2  3557          0.18
+#3       3  6789          0.13
+
+
+##RFM Simplified##
+merchants_comb <- read.csv("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\merchants_comb.csv",header=TRUE)
+merchants_comb$fm <- merchants_comb$frequency * merchants_comb$monetary
+#merchants_comb <- merchants_comb[!merchants_comb$fm %in% boxplot.stats(merchants_comb$fm)$out,]
+merchants_comb$recency_scaled <- rescale(merchants_comb$recency,to=c(0,5))
+merchants_comb$fm_scaled <- rescale(merchants_comb$fm,to=c(0,5))
+
+#remove outliers
+#write.csv(merchants_comb,"C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\merchants_comb_no_outliers.csv",row.names=FALSE)
+
+ggplot(merchants_comb, aes(x = fm)) +
+   geom_histogram(bins = 20, fill = "steelblue") +
+   theme_classic() +
+   labs(x = "average amount", title = "Frequency * Monetary")
+
+ggplot(merchants_comb, aes(x = fm)) +
+   geom_histogram(bins = 20, fill = "steelblue") +
+   theme_classic() +
+   labs(x = "amount (log10)", 
+        title = "Frequency*Monetary\n (Data are log transformed to ease visualization)") +
+   scale_x_log10()
+
+ggplot(merchants_comb, aes(x = recency)) +
+   geom_histogram(bins = 20, fill = "steelblue") +
+   theme_classic() +
+   labs(x = "average amount", title = "Recency")
+
+merchants_comb$log_fm <- log10(merchants_comb$fm)
+#merchants_comb <- merchants_comb[merchants_comb$log_fm != "-Inf",]
+merchants_comb <- merchants_comb[!merchants_comb$log_fm %in% boxplot.stats(merchants_comb$log_fm)$out,]
+merchants_comb$log_fm_scaled <- rescale(merchants_comb$log_fm,to=c(0,5))
+merchants_comb$customer_segment <- as.character(merchants_comb$app_id)
+
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=2 & merchants_comb$log_fm_scaled>=3)] <- "Loyal Customers"
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=4 & merchants_comb$log_fm_scaled>=4)] <- "Champions"
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=3 & merchants_comb$log_fm_scaled>=1 & merchants_comb$log_fm_scaled<3)] <- "Potential Loyalist"
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=4 & merchants_comb$log_fm_scaled>=0 & merchants_comb$log_fm_scaled<1)] <- "Recent Customers"
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=3 & merchants_comb$recency_scaled<4 & merchants_comb$log_fm_scaled>=0 & merchants_comb$log_fm_scaled<1)] <- "Promising"
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=2 & merchants_comb$recency_scaled<3 & merchants_comb$log_fm_scaled>=2 & merchants_comb$log_fm_scaled<3)] <- "Customers Needing Attention"
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=2 & merchants_comb$recency_scaled<3 & merchants_comb$log_fm_scaled>=0 & merchants_comb$log_fm_scaled<2)] <- "About To Sleep"
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=0 & merchants_comb$recency_scaled<2 & merchants_comb$log_fm_scaled>=2)] <- "At Risk"
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=0 & merchants_comb$recency_scaled<1 & merchants_comb$log_fm_scaled>=4)] <- "Can't Lose Them"
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=1 & merchants_comb$recency_scaled<2 & merchants_comb$log_fm_scaled>=1 & merchants_comb$log_fm_scaled<2)] <- "Hibernating"
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=0 & merchants_comb$recency_scaled<2 & merchants_comb$log_fm_scaled>=0 & merchants_comb$log_fm_scaled<2)] <- "Lost"
+
+write.csv(merchants_comb,"C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\merchants_comb_segment_Mar2019.csv",row.names=FALSE)
+
+#Refine#
+merchants_comb <- read.csv("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\merchants_google_play_data.csv",header=TRUE)
+merchants_comb <- merchants_comb[merchants_comb$monetary > 0,]
+merchants_comb$app_id <- c(1:length(merchants_comb$app))
+merchants_comb$fm <- merchants_comb$frequency * merchants_comb$monetary
+
+merchants_comb$recency_rev[which(merchants_comb$recency < 1000)] <- 0
+merchants_comb$recency_rev[which(merchants_comb$recency < 301)] <- 0.5
+merchants_comb$recency_rev[which(merchants_comb$recency < 271)] <- 1
+merchants_comb$recency_rev[which(merchants_comb$recency < 241)] <- 1.5
+merchants_comb$recency_rev[which(merchants_comb$recency < 211)] <- 2
+merchants_comb$recency_rev[which(merchants_comb$recency < 181)] <- 2.5
+merchants_comb$recency_rev[which(merchants_comb$recency < 151)] <- 3
+merchants_comb$recency_rev[which(merchants_comb$recency < 121)] <- 3.5
+merchants_comb$recency_rev[which(merchants_comb$recency < 91)] <- 4
+merchants_comb$recency_rev[which(merchants_comb$recency < 61)] <- 4.5
+merchants_comb$recency_rev[which(merchants_comb$recency < 31)] <- 5
+
+merchants_comb$recency_scaled <- merchants_comb$recency_rev
+merchants_comb$fm_scaled <- rescale(merchants_comb$fm,to=c(0,5))
+merchants_comb$log_fm <- log10(merchants_comb$fm)
+merchants_comb$log_fm_scaled <- rescale(merchants_comb$log_fm,to=c(0,5))
+merchants_comb$customer_segment <- as.character(merchants_comb$app_id)
+
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=2 & merchants_comb$log_fm_scaled>=3)] <- "Loyal Customers"
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=4 & merchants_comb$log_fm_scaled>=4)] <- "Champions"
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=3 & merchants_comb$log_fm_scaled>=1 & merchants_comb$log_fm_scaled<3)] <- "Potential Loyalist"
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=4 & merchants_comb$log_fm_scaled>=0 & merchants_comb$log_fm_scaled<1)] <- "Recent Customers"
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=3 & merchants_comb$recency_scaled<4 & merchants_comb$log_fm_scaled>=0 & merchants_comb$log_fm_scaled<1)] <- "Promising"
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=2 & merchants_comb$recency_scaled<3 & merchants_comb$log_fm_scaled>=2 & merchants_comb$log_fm_scaled<3)] <- "Customers Needing Attention"
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=2 & merchants_comb$recency_scaled<3 & merchants_comb$log_fm_scaled>=0 & merchants_comb$log_fm_scaled<2)] <- "About To Sleep"
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=0 & merchants_comb$recency_scaled<2 & merchants_comb$log_fm_scaled>=2)] <- "At Risk"
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=0 & merchants_comb$recency_scaled<1 & merchants_comb$log_fm_scaled>=4)] <- "Can't Lose Them"
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=1 & merchants_comb$recency_scaled<2 & merchants_comb$log_fm_scaled>=1 & merchants_comb$log_fm_scaled<2)] <- "Hibernating"
+merchants_comb$customer_segment[which(merchants_comb$recency_scaled>=0 & merchants_comb$recency_scaled<2 & merchants_comb$log_fm_scaled>=0 & merchants_comb$log_fm_scaled<2)] <- "Lost"
+
+write.csv(merchants_comb,"C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\merchants_comb_segment_with_outliers_Mar2019.csv",row.names=FALSE)
+
+##Customer Retention Rate, CRR##
+data <- read.csv("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\google_compile.csv",header=TRUE)
+data$Date <- as.Date(data$TimeStamp,format='%Y-%m-%d')
+write.csv(data,"C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\data_with_date_Mar2019.csv",row.names=FALSE)
+
+#CRR_Round_1#
+data_042017 <- data %>%
+filter(month(Date)=="4" & year(Date)=="2017")
+S <- length(unique(data_042017$MSISDN))
+
+data_052017 <- data %>%
+filter(month(Date)=="5" & year(Date)=="2017")
+E <- length(unique(data_052017$MSISDN))
+
+data_040517 <- anti_join(data_052017,data_042017,by='MSISDN')
+N <- length(unique(data_040517$MSISDN))
+
+crr <- ((E-N)/S) * 100
+
+crr_vec <- c(crr)
+crr_monthyear <- c("04052017")
+
+#CRR_Round_2#
+data_052017 <- data %>%
+filter(month(Date)=="5" & year(Date)=="2017")
+S <- length(unique(data_052017$MSISDN))
+
+data_062017 <- data %>%
+filter(month(Date)=="6" & year(Date)=="2017")
+E <- length(unique(data_062017$MSISDN))
+
+data_050617 <- anti_join(data_062017,data_052017,by='MSISDN')
+N <- length(unique(data_050617$MSISDN))
+
+crr <- ((E-N)/S) * 100
+
+crr_vec <- rbind(crr_vec,crr)
+crr_monthyear <- rbind(crr_monthyear,"05062017")
+
+crr_vec
+crr_monthyear
+
+#CRR_Round_3#
+data_062017 <- data %>%
+filter(month(Date)=="6" & year(Date)=="2017")
+S <- length(unique(data_062017$MSISDN))
+
+data_072017 <- data %>%
+filter(month(Date)=="7" & year(Date)=="2017")
+E <- length(unique(data_072017$MSISDN))
+
+data_060717 <- anti_join(data_072017,data_062017,by='MSISDN')
+N <- length(unique(data_060717$MSISDN))
+
+crr <- ((E-N)/S) * 100
+
+crr_vec <- rbind(crr_vec,crr)
+crr_monthyear <- rbind(crr_monthyear,"06072017")
+
+crr_vec
+crr_monthyear
+
+#CRR_Round_4#
+data_072017 <- data %>%
+filter(month(Date)=="7" & year(Date)=="2017")
+S <- length(unique(data_072017$MSISDN))
+
+data_082017 <- data %>%
+filter(month(Date)=="8" & year(Date)=="2017")
+E <- length(unique(data_082017$MSISDN))
+
+data_070817 <- anti_join(data_082017,data_072017,by='MSISDN')
+N <- length(unique(data_070817$MSISDN))
+
+crr <- ((E-N)/S) * 100
+
+crr_vec <- rbind(crr_vec,crr)
+crr_monthyear <- rbind(crr_monthyear,"07082017")
+
+crr_vec
+crr_monthyear
+
+#CRR_Round_5#
+data_082017 <- data %>%
+filter(month(Date)=="8" & year(Date)=="2017")
+S <- length(unique(data_082017$MSISDN))
+
+data_092017 <- data %>%
+filter(month(Date)=="9" & year(Date)=="2017")
+E <- length(unique(data_092017$MSISDN))
+
+data_080917 <- anti_join(data_092017,data_082017,by='MSISDN')
+N <- length(unique(data_080917$MSISDN))
+
+crr <- ((E-N)/S) * 100
+
+crr_vec <- rbind(crr_vec,crr)
+crr_monthyear <- rbind(crr_monthyear,"08092017")
+
+crr_vec
+crr_monthyear
+
+#CRR_Round_6#
+data_092017 <- data %>%
+filter(month(Date)=="9" & year(Date)=="2017")
+S <- length(unique(data_092017$MSISDN))
+
+data_102017 <- data %>%
+filter(month(Date)=="10" & year(Date)=="2017")
+E <- length(unique(data_102017$MSISDN))
+
+data_091017 <- anti_join(data_102017,data_092017,by='MSISDN')
+N <- length(unique(data_091017$MSISDN))
+
+crr <- ((E-N)/S) * 100
+
+crr_vec <- rbind(crr_vec,crr)
+crr_monthyear <- rbind(crr_monthyear,"09102017")
+
+crr_vec
+crr_monthyear
+
+#CRR_Round_7#
+data_102017 <- data %>%
+filter(month(Date)=="10" & year(Date)=="2017")
+S <- length(unique(data_102017$MSISDN))
+
+data_112017 <- data %>%
+filter(month(Date)=="11" & year(Date)=="2017")
+E <- length(unique(data_112017$MSISDN))
+
+data_101117 <- anti_join(data_112017,data_102017,by='MSISDN')
+N <- length(unique(data_101117$MSISDN))
+
+crr <- ((E-N)/S) * 100
+
+crr_vec <- rbind(crr_vec,crr)
+crr_monthyear <- rbind(crr_monthyear,"10112017")
+
+crr_vec
+crr_monthyear
+
+#CRR_Round_8#
+data_112017 <- data %>%
+filter(month(Date)=="11" & year(Date)=="2017")
+S <- length(unique(data_112017$MSISDN))
+
+data_122017 <- data %>%
+filter(month(Date)=="12" & year(Date)=="2017")
+E <- length(unique(data_122017$MSISDN))
+
+data_111217 <- anti_join(data_122017,data_112017,by='MSISDN')
+N <- length(unique(data_111217$MSISDN))
+
+crr <- ((E-N)/S) * 100
+
+crr_vec <- rbind(crr_vec,crr)
+crr_monthyear <- rbind(crr_monthyear,"11122017")
+
+crr_vec
+crr_monthyear
+
+#CRR_Round_9#
+data_122017 <- data %>%
+filter(month(Date)=="12" & year(Date)=="2017")
+S <- length(unique(data_122017$MSISDN))
+
+data_022018 <- data %>%
+filter(month(Date)=="2" & year(Date)=="2018")
+E <- length(unique(data_022018$MSISDN))
+
+data_021218 <- anti_join(data_022018,data_122017,by='MSISDN')
+N <- length(unique(data_021218$MSISDN))
+
+crr <- ((E-N)/S) * 100
+
+crr_vec <- rbind(crr_vec,crr)
+crr_monthyear <- rbind(crr_monthyear,"02122018")
+
+crr_vec
+crr_monthyear
+
+
+#CRR_Round_10#
+data_022018 <- data %>%
+filter(month(Date)=="2" & year(Date)=="2018")
+S <- length(unique(data_022018$MSISDN))
+
+data_032018 <- data %>%
+filter(month(Date)=="3" & year(Date)=="2018")
+E <- length(unique(data_032018$MSISDN))
+
+data_030218 <- anti_join(data_032018,data_022018,by='MSISDN')
+N <- length(unique(data_030218$MSISDN))
+
+crr <- ((E-N)/S) * 100
+
+crr_vec <- rbind(crr_vec,crr)
+crr_monthyear <- rbind(crr_monthyear,"03022018")
+
+crr_vec
+crr_monthyear
+
+#CRR_Round_11#
+data_032018 <- data %>%
+filter(month(Date)=="3" & year(Date)=="2018")
+S <- length(unique(data_032018$MSISDN))
+
+data_042018 <- data %>%
+filter(month(Date)=="4" & year(Date)=="2018")
+E <- length(unique(data_042018$MSISDN))
+
+data_040318 <- anti_join(data_042018,data_032018,by='MSISDN')
+N <- length(unique(data_040318$MSISDN))
+
+crr <- ((E-N)/S) * 100
+
+crr_vec <- rbind(crr_vec,crr)
+crr_monthyear <- rbind(crr_monthyear,"04032018")
+
+crr_vec
+crr_monthyear
+
+#CRR_Round_12#
+data_042018 <- data %>%
+filter(month(Date)=="4" & year(Date)=="2018")
+S <- length(unique(data_042018$MSISDN))
+
+data_052018 <- data %>%
+filter(month(Date)=="5" & year(Date)=="2018")
+E <- length(unique(data_052018$MSISDN))
+
+data_050418 <- anti_join(data_052018,data_042018,by='MSISDN')
+N <- length(unique(data_050418$MSISDN))
+
+crr <- ((E-N)/S) * 100
+
+crr_vec <- rbind(crr_vec,crr)
+crr_monthyear <- rbind(crr_monthyear,"05042018")
+
+crr_vec
+crr_monthyear
+
+#CRR_Round_13#
+data_052018 <- data %>%
+filter(month(Date)=="5" & year(Date)=="2018")
+S <- length(unique(data_052018$MSISDN))
+
+data_062018 <- data %>%
+filter(month(Date)=="6" & year(Date)=="2018")
+E <- length(unique(data_062018$MSISDN))
+
+data_060518 <- anti_join(data_062018,data_052018,by='MSISDN')
+N <- length(unique(data_060518$MSISDN))
+
+crr <- ((E-N)/S) * 100
+
+crr_vec <- rbind(crr_vec,crr)
+crr_monthyear <- rbind(crr_monthyear,"06052018")
+
+crr_vec
+crr_monthyear
+
+
+#CRR_Round_14#
+data_062018 <- data %>%
+filter(month(Date)=="6" & year(Date)=="2018")
+S <- length(unique(data_062018$MSISDN))
+
+data_072018 <- data %>%
+filter(month(Date)=="7" & year(Date)=="2018")
+E <- length(unique(data_072018$MSISDN))
+
+data_070618 <- anti_join(data_072018,data_062018,by='MSISDN')
+N <- length(unique(data_070618$MSISDN))
+
+crr <- ((E-N)/S) * 100
+
+crr_vec <- rbind(crr_vec,crr)
+crr_monthyear <- rbind(crr_monthyear,"07062018")
+
+crr_vec
+crr_monthyear
+
+#CRR_Round_15#
+data_072018 <- data %>%
+filter(month(Date)=="7" & year(Date)=="2018")
+S <- length(unique(data_072018$MSISDN))
+
+data_082018 <- data %>%
+filter(month(Date)=="8" & year(Date)=="2018")
+E <- length(unique(data_082018$MSISDN))
+
+data_080718 <- anti_join(data_082018,data_072018,by='MSISDN')
+N <- length(unique(data_080718$MSISDN))
+
+crr <- ((E-N)/S) * 100
+
+crr_vec <- rbind(crr_vec,crr)
+crr_monthyear <- rbind(crr_monthyear,"08072018")
+
+crr_vec
+crr_monthyear
+
+#CRR_Round_16#
+data_082018 <- data %>%
+filter(month(Date)=="8" & year(Date)=="2018")
+S <- length(unique(data_082018$MSISDN))
+
+data_092018 <- data %>%
+filter(month(Date)=="9" & year(Date)=="2018")
+E <- length(unique(data_092018$MSISDN))
+
+data_090818 <- anti_join(data_092018,data_082018,by='MSISDN')
+N <- length(unique(data_090818$MSISDN))
+
+crr <- ((E-N)/S) * 100
+
+crr_vec <- rbind(crr_vec,crr)
+crr_monthyear <- rbind(crr_monthyear,"09082018")
+
+crr_vec
+crr_monthyear
+
+#CRR_Round_17#
+data_092018 <- data %>%
+filter(month(Date)=="9" & year(Date)=="2018")
+S <- length(unique(data_092018$MSISDN))
+
+data_102018 <- data %>%
+filter(month(Date)=="10" & year(Date)=="2018")
+E <- length(unique(data_102018$MSISDN))
+
+data_100918 <- anti_join(data_102018,data_092018,by='MSISDN')
+N <- length(unique(data_100918$MSISDN))
+
+crr <- ((E-N)/S) * 100
+
+crr_vec <- rbind(crr_vec,crr)
+crr_monthyear <- rbind(crr_monthyear,"10092018")
+
+crr_vec
+crr_monthyear
+
+
+#CRR_Round_18#
+data_102018 <- data %>%
+filter(month(Date)=="10" & year(Date)=="2018")
+S <- length(unique(data_102018$MSISDN))
+
+data_112018 <- data %>%
+filter(month(Date)=="11" & year(Date)=="2018")
+E <- length(unique(data_112018$MSISDN))
+
+data_111018 <- anti_join(data_112018,data_102018,by='MSISDN')
+N <- length(unique(data_110918$MSISDN))
+
+crr <- ((E-N)/S) * 100
+
+crr_vec <- rbind(crr_vec,crr)
+crr_monthyear <- rbind(crr_monthyear,"11102018")
+
+crr_vec
+crr_monthyear
+
+##CRR Matrix##
+crr_mat <- cbind(crr_vec,crr_monthyear)
+
+crr_mat <- crr_mat[-18,]
+
+crr_df <- as.data.frame(crr_mat)
+colnames(crr_df) <- c("CRR","Period")
+
+row.names(crr_df) <- FALSE
+
+crr_df
+
+#                CRR   Period
+#1  66.6841863215295 04052017
+#2  66.0842821620207 05062017
+#3  68.0651895750556 06072017
+#4  66.9391926417987 07082017
+#5  67.1678389365684 08092017
+#6  68.2314904623343 09102017
+#7  67.0347306926879 10112017
+#8  68.2938076416337 11122017
+#9  58.4021005251313 02122018
+#10 68.1619110816191 03022018
+#11  67.108581775852 04032018
+#12 69.2436077174711 05042018
+#13 67.6636494818313 06052018
+#14 68.8753557953267 07062018
+#15 67.7863471221875 08072018
+#16 65.8315334773218 09082018
+#17 66.7091024824952 10092018
+
+
+crr_df$Period_Rev <-ymd(data_052017$Date[1:17],format="%Y-%d-%M")
+crr_df$Period_Rev[17] <- crr_df$Period_Rev[16]
+
+crr_df$Period_Rev[2] <-data_062017$Date[1]
+crr_df$Period_Rev[3] <-data_072017$Date[1]
+crr_df$Period_Rev[4] <-data_082017$Date[1]
+crr_df$Period_Rev[5] <-data_092017$Date[1]
+crr_df$Period_Rev[6] <-data_102017$Date[1]
+crr_df$Period_Rev[7] <-data_112017$Date[1]
+crr_df$Period_Rev[8] <-data_122017$Date[1]
+crr_df$Period_Rev[9] <-data_022018$Date[1]
+crr_df$Period_Rev[10] <-data_032018$Date[1]
+crr_df$Period_Rev[11] <-data_042018$Date[1]
+crr_df$Period_Rev[12] <-data_052018$Date[1]
+crr_df$Period_Rev[13] <-data_062018$Date[1]
+crr_df$Period_Rev[14] <-data_072018$Date[1]
+crr_df$Period_Rev[15] <-data_082018$Date[1]
+crr_df$Period_Rev[16] <-data_092018$Date[1]
+crr_df$Period_Rev[17] <-data_102018$Date[1]
+
+write.csv(crr_df,"C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\crr_df_Mar2019.csv",row.names=FALSE)
+
+
+#match
+#singcash <- read.csv("C:\\Users\\P1318124\\Desktop\\singcash_email.csv",header=TRUE)
+singcash <- read.csv("C:\\Users\\P1318124\\Desktop\\singcash_stat.csv",header=TRUE)
+customers <- data
+
+colnames(singcash)[1] <- "MSISDN"
+
+customers$MSISDN <- as.factor(customers$MSISDN)
+
+singcash_a <- singcash %>%
+filter(ACCT_STAT == 'A')
+
+
+cust_match <- merge(x=customers,y=singcash_a,by='MSISDN',all.x=TRUE)
+
+cust_match_in <- merge(x=customers,y=singcash_a,by='MSISDN')
+
+customers_merge <- cust_match_in
+
+library(stringr)
+
+customers_merge$age_year <- str_sub(as.character(customers_merge$ACCT_DOB),start= -4)
+customers_merge$age <- 2018 - as.numeric(customers_merge$age_year)
+#write.csv(customers_merge,"C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\customers_merge.csv",row.names=FALSE)
+
+customers_merge$group_year[year(customers_merge$Date)=='2017' & month(customers_merge$Date) %in% c(4,5,6,7,8,9,10)] <- "Apr'17 to Oct'17"
+customers_merge$group_year[year(customers_merge$Date)=='2018' & month(customers_merge$Date) %in% c(4,5,6,7,8,9,10)] <- "Apr'18 to Oct'18"
+write.csv(customers_merge,"C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\customers_merge_Mar2019.csv",row.names=FALSE)
+
+customers_merge_1718 <- customers_merge %>%
+filter(transaction_status == "EP_SUCCESS") %>%
+#group_by(group_year) %>%
+group_by(year(Date),month(Date)) %>%
+summarise(revenue = sum(total_amount_in_local_currency), number_of_orders = n(), distinct_users = n_distinct(MSISDN), purchase_frequency = n()/n_distinct(MSISDN),average_value_order = sum(total_amount_in_local_currency)/n_distinct(MSISDN)) 
+
+customers_merge_1718 <- as.data.frame(customers_mege_1718)
+customers_merge_1718$month_abb <- month.abb[customers_merge_1718[,2]]
+colnames(customers_merge_1718)[1] <- "year"
+colnames(customers_merge_1718)[2] <- "month"
+customers_merge_1718$month_year <- paste(customers_merge_1718$month_abb,customers_merge_1718$year,sep="-")
+customers_merge_1718$date_index <- c(1:19)
+write.csv(customers_merge_1718,"C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\customers_merge_1718_Mar2019.csv",row.names=FALSE)
+
+
+#apps
+customers_merge_apps <- customers_merge %>%
+filter(transaction_status == "EP_SUCCESS") %>%
+#group_by(app) %>%
+group_by(app,year(Date),month(Date)) %>%
+summarise(revenue = sum(total_amount_in_local_currency), number_of_orders = n(), distinct_users = n_distinct(MSISDN), purchase_frequency = n()/n_distinct(MSISDN),average_value_order = sum(total_amount_in_local_currency)/n_distinct(MSISDN)) 
+
+customers_merge_apps <- as.data.frame(customers_merge_apps)
+customers_merge_apps$month_abb <- month.abb[customers_merge_apps[,3]]
+colnames(customers_merge_apps)[2] <- "year"
+colnames(customers_merge_apps)[3] <- "month"
+customers_merge_apps$month_year <- paste(customers_merge_apps$month_abb,customers_merge_apps$year,sep="-")
+customers_merge_apps$date_index <- c(1:length(customers_merge_apps$month_year))
+write.csv(customers_merge_apps,"C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\customers_merge_apps_Mar2019.csv",row.names=FALSE)
+
+
+
+
+#RUN RATE calculate DP#
+#divide total MTD sales over number of days MTD, then multiply by 30 (or 31) to find run rate monthly#
+
+
+customers_merge_test <- customers %>%
+filter(transaction_status == "EP_SUCCESS") %>%
+filter(total_amount_in_local_currency > 0) %>%
+#group_by(app) %>%
+group_by(app,year(Date),month(Date)) %>%
+summarise(revenue = sum(total_amount_in_local_currency), number_of_orders = n(), distinct_users = n_distinct(MSISDN), purchase_frequency = n()/n_distinct(MSISDN),average_value_order = sum(total_amount_in_local_currency)/n_distinct(MSISDN)) 
+customers_merge_test <- as.data.frame(customers_merge_test)
+
+customers_merge_test$month_abb <- month.abb[customers_merge_test[,3]]
+colnames(customers_merge_test)[2] <- "year"
+colnames(customers_merge_test)[3] <- "month"
+customers_merge_test$month_year <- paste(customers_merge_test$month_abb,customers_merge_test$year,sep="-")
+customers_merge_test$date_index <- c(1:length(customers_merge_test$month_year))
+write.csv(customers_merge_test,"C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\customers_merge_test_Mar2019.csv",row.names=FALSE)
+
+
+
+#APPROACH 2122018
+#Group data into Apr-Oct 2017 and 2018
+#each group has four columns- app, total_sales, total_transactions, distinct_users
+#then merge the two groups (so have 7 columns)
+#then create new columns about percentaage change (from 2017 to 2018)
+#e.g. ((total_sales_2018-total_sales_2017)/total_sales_2017) * 100
+#so we can do quadrant (think of tableau course section 2 on startup scatter chart)
+
+google <- read.csv("C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\google_play_data_19112018.csv",header=TRUE)
+
+google_rev <- google
+
+google_rev$app <- tolower(google$app)
+
+google_rev <- google_rev[google_rev$total_amount_in_local_currency!=0,]
+
+#Apr-Oct 2017
+apr_oct_2017 <- google_rev %>%
+filter(as.Date(Date,'%Y-%m-%d') >= '2017-04-01' & as.Date(Date,'%Y-%m-%d') <= '2017-10-31') %>%
+filter(transaction_status=="EP_SUCCESS") %>%
+group_by(app) %>%
+summarise(total_sales = sum(total_amount_in_local_currency), total_txns = n(), distinct_users = n_distinct(MSISDN))
+
+apr_oct_2017 <- as.data.frame(apr_oct_2017)
+
+#Apr-Oct 2018
+apr_oct_2018 <- google_rev %>%
+filter(as.Date(Date,'%Y-%m-%d') >= '2018-04-01' & as.Date(Date,'%Y-%m-%d') <= '2018-10-31') %>%
+filter(transaction_status=="EP_SUCCESS") %>%
+group_by(app) %>%
+summarise(total_sales = sum(total_amount_in_local_currency), total_txns = n(), distinct_users = n_distinct(MSISDN))
+
+apr_oct_2018 <- as.data.frame(apr_oct_2018)
+
+#compare performance YOY
+growth <- left_join(apr_oct_2017,apr_oct_2018, by='app')
+
+colnames(growth) <- c("App","Total_Sales_2017","Total_Txns_2017","Distinct_Users_2017","Total_Sales_2018","Total_Txns_2018","Distinct_Users_2018")
+
+growth$Sales_Growth <- ((growth$Total_Sales_2018 - growth$Total_Sales_2017)/growth$Total_Sales_2017) * 100
+
+growth$Txns_Growth <- ((growth$Total_Txns_2018 - growth$Total_Txns_2017)/growth$Total_Txns_2017) * 100
+
+growth$Users_Growth <- ((growth$Distinct_Users_2018 - growth$Distinct_Users_2017)/growth$Distinct_Users_2017) * 100
+
+growth <- growth[,c(1,5,2,8,6,3,9,7,4,10)]
+
+write.csv(growth,"C:\\Users\\P1318124\\Desktop\\Apple & Google\\Analyses\\growth_apps_Mar2019.csv",row.names=FALSE)
+
+
+
+
+
+
+
+
+
