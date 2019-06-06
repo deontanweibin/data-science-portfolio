@@ -1,0 +1,56 @@
+--find out how snesitive fees and fx rates are to TC, TV
+--for remittance biweekly (follow up from biweekly in May 2019 by Gilbert)
+
+SELECT a.src_fees AS fees, a.src_debit AS amt, a.fx_margin*-1 AS fx, a.dest_curr 
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_HUB a
+INNER JOIN EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM b
+ON a.scr_ref = b.txn_id
+WHERE a.STAT LIKE '%PST%'
+AND b.CUST_MSISDN != '6583381170' 
+AND b.CUST_MSISDN != '6597727199'
+AND b.CUST_MSISDN != '6596510899'
+And b.data_txn_rfnd = 'False'
+
+
+--export as remittance_regression_analysis.csv
+library(data.table)
+library(DataExplorer)
+library(dplyr)
+library(ggplot2)
+
+
+#optimised file reading
+url <- "C:\\Users\\P1318124\\Desktop\\BA Projects\\Remittance_BA\\Remittance_Regression_Analysis\\remittance_regression_analyis.csv"
+
+#readLines(url)
+dt <- fread(url)
+
+#data <- read.csv("C:\\Users\\P1318124\\Desktop\\BA Projects\\Remittance_BA\\Remittance_Regression_Analysis\\remittance_regression_analysis.csv",header=TRUE)
+
+#data <- read.csv("C:\\Users\\P1318124\\Desktop\\BA Projects\\Remittance_BA\\Remittance_Regression_Analysis\\remittance_regression_analyis.csv",header=TRUE)
+
+dt <- as.data.frame(dt)
+
+dt$FEES <- dt$FEES * (-1)
+
+gg <- ggplot(dt, aes(x=FEES,y=AMT,col=DEST_CURR)) +
+geom_point(size=3) +
+geom_smooth(method="lm",size=1,se=FALSE) +
+labs(title="Fees Vs Amount", subtitle="Regression across different currencies", y="Amount",x="Fees")
+
+plot(gg)
+
+dt$FX <- ifelse(dt$FX < 0, dt$FX*(-1), dt$FX)
+
+gg_fx <- ggplot(dt, aes(x=FX,y=AMT,col=DEST_CURR)) +
+geom_point(size=3) +
+geom_smooth(method="lm",size=1,se=FALSE) +
+labs(title="FX Vs Amount", subtitle="Regression across different currencies", y="Amount",x="FX")
+
+plot(gg_fx)
+
+boxplot(dt$FX~dt$DEST_CURR,dt)
+
+
+
+
