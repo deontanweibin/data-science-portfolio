@@ -1,0 +1,62 @@
+#install.packages("shiny", repos="http://cran.us.r-project.org")
+#install.packages("shinydasboard", repos="http://cran.us.r-project.org")
+
+library(shiny)
+library(shinydashboard)
+
+#empty dashboard
+header <- dashboardHeader()
+sidebar <- dashboardSidebar()
+body <- dashboardBody()
+
+#make user interface
+ui <- dashboardPage(header,sidebar,body)
+
+server <- function(input, output) {}
+shiny::shinyApp(ui, server)
+
+#dropdown menus
+#message menu
+header <- dashboardHeader(
+dropdownMenu(type="messages")
+)
+
+header <- dashboardHeader(
+dropdownMenu(
+type = "messages",
+messageItem(
+from = "Akbar",
+message = "Check out my linkedin!",
+href = "https://www.linkedin.com"
+),
+messageItem(
+from = "Akbar",
+message = "Check out my github!",
+href = "https://www.github.com"
+)
+)
+)
+
+#notifications menu
+header <- dashboardHeader(
+dropdownMenu(
+type = "notifications",
+notificationItem(
+text = "Check out facebook!",
+href = "https://www.facebook.com"
+)
+)
+)
+
+#tasks menu
+header <- dashboardHeader(
+dropdownMenu(
+type = "tasks",
+taskItem(
+text = "Look at your sales progress!",
+value = 15
+)
+)
+)
+
+
