@@ -60,3 +60,43 @@ value = 15
 )
 
 
+#sidebar
+#add tabs to sidebar
+sidebar <- dashboardSidebar(
+sidebarMenu(
+menuItem("Data",
+tabName = "data"
+),
+menuItem("Dashboard",
+tabName = "dashboard"
+)
+)
+)
+
+#body
+body <- dashboardBody(
+tabItems(
+tabItem(tabName = "data"),
+tabItem(tabName = "dashboard")
+)
+)
+
+body <- dashboardBody(
+tabItems(
+tabItem(tabName = "data",
+"Input data here"),
+tabItem(tabName = "dashboard",
+"Look at my coolest dashboard")
+)
+)
+
+#tabBox in Body
+body <- dashboardBody(
+tabBox(
+title = "My first box",
+tabPanel("Tab1","Content for the first tab"),
+tabPanel("Tab2","Content for the second tab")
+)
+)
+
+
