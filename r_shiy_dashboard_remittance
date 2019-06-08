@@ -1,0 +1,109 @@
+library(shiny)
+library(shinydashboard)
+library(dplyr)
+#library(xlsx)
+library(readxl)
+library(lubridate)
+library(reshape2)
+
+
+data <- read_excel("C:\\Users\\P1318124\\Desktop\\Remittance\\Daily Remittance\\daily_remittance.xlsx",2)
+
+#explore data
+sapply(data, class)
+sapply(data, anyNA)
+
+
+
+sum_tv <- sum(data$NETT_SPENDS)
+sum_tc <- sum(data$NETT_TRANSACTIONS)
+
+sum_tv_mtd <- data %>%
+filter(month(TXN_DATE) == month(Sys.Date() - 1)) %>%
+filter(year(TXN_DATE) == year(Sys.Date() - 1)) %>%
+summarise(sum_tv_mtd = sum(NETT_SPENDS))
+
+sum_tc_mtd <- data %>%
+filter(month(TXN_DATE) == month(Sys.Date() - 1)) %>%
+filter(year(TXN_DATE) == year(Sys.Date() - 1)) %>%
+summarise(sum_tc_mtd = sum(NETT_TRANSACTIONS))
+
+arpt_mtd <- data %>%
+filter(month(TXN_DATE) == month(Sys.Date() - 1)) %>%
+filter(year(TXN_DATE) == year(Sys.Date() - 1)) %>%
+summarise(arpt_mtd = sum(NETT_SPENDS)/sum(NETT_TRANSACTIONS))
+
+data_day <- data %>%
+filter(ymd(TXN_DATE) >= Sys.Date()-32) %>%
+group_by(ymd(TXN_DATE), CORRIDOR) %>%
+summarise(NETT_SPENDS=sum(NETT_SPENDS,na.rm=TRUE), NETT_TRANSACTIONS = sum(NETT_TRANSACTIONS, na.rm =TRUE))
+
+data_day_corridor_tv <- dcast(data_day,CORRIDOR ~ data_day$'ymd(TXN_DATE)', value.var = "NETT_SPENDS",fun.aggregate = sum)
+data_day_corridor_tc <- dcast(data_day,CORRIDOR ~ data_day$'ymd(TXN_DATE)', value.var = "NETT_TRANSACTIONS",fun.aggregate = sum)
+
+rownames(data_day_corridor_tv) <- data_day_corridor_tv$CORRIDOR
+rownames(data_day_corridor_tc) <- data_day_corridor_tc$CORRIDOR
+
+data_day_corridor_tv <- data_day_corridor_tv[,-1]
+data_day_corridor_tc <- data_day_corridor_tc[,-1]
+
+header <- dashboardHeader()
+sidebar <- dashboardSidebar()
+body <- dashboardBody()
+
+ui <- dashboardPage(header,sidebar,body)
+
+server <- function(input, output) {
+output$barchart_tv <- renderPlot({
+#barplot(data_day$NETT_SPENDS, names.arg = data_day$'ymd(TXN_DATE)', axes = TRUE, col = "purple")
+barplot(as.matrix(data_day_corridor_tv), col = terrain.colors(length(unique(data_day$CORRIDOR))), legend = TRUE, args.legend = list(bty = "n", x = "top", ncol = 2), ylim = c(0,max(data_day$NETT_SPENDS,na.rm=TRUE)+1000000))
+})
+output$barchart_tc <- renderPlot({
+#barplot(data_day$NETT_TRANSACTIONS, names.arg = data_day$'ymd(TXN_DATE)', axes = TRUE, col = "purple")
+barplot(as.matrix(data_day_corridor_tc), col = terrain.colors(length(unique(data_day$CORRIDOR))), legend = TRUE, args.legend = list(bty = "n", x = "top", ncol = 2), ylim = c(0,max(data_day$NETT_TRANSACTIONS,na.rm=TRUE)+5000))
+})
+}
+
+shiny::shinyApp(ui, server)
+
+
+body <- dashboardBody(
+  
+fluidRow(
+    # Add a value box for maximum velocity
+    
+valueBox(
+      
+value = sum_tv_mtd,
+      
+subtitle = "Amount of Transactions MTD", 
+      
+icon = icon("dollar")
+    )
+,
+valueBox(
+value = sum_tc_mtd,
+subtitle = "Number of Transactions MTD",
+icon = icon("globe")),
+valueBox(
+value = arpt_mtd,
+subtitle = "Average Ticket Size MTD",
+icon = icon("shopping-cart"))  
+
+),
+fluidRow( #Add barchart
+box(plotOutput("barchart_tv"))
+,
+box(plotOutput("barchart_tc"))
+)
+
+
+)
+
+header <- dashboardHeader(
+title = "Remittance Performance Summary"
+)
+
+
+
+
