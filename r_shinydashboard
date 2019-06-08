@@ -100,3 +100,389 @@ tabPanel("Tab2","Content for the second tab")
 )
 
 
+library("shiny")
+body <- dashboardBody(
+  
+# Create a tabBox
+  
+tabItems(
+    
+tabItem(
+      
+tabName = "dashboard",
+      
+tabBox(
+      title = "International Space Station Fun Facts",
+      tabPanel("Fun Fact 1"),
+      tabPanel("Fun Fact 2")
+      )
+    ),
+    
+tabItem(tabName = "inputs")
+  )
+)
+
+
+
+ui <- dashboardPage(header = dashboardHeader(),
+                    
+sidebar = sidebar,
+                    
+body = body
+                    
+)
+
+
+shinyApp(ui, server)
+
+
+#Reactive expression refresher
+#Inputs
+actionButton()
+checkboxInput()
+dateInput()
+numericInput()
+radioButtons()
+selectInput()
+sliderInput()
+textInput()
+
+selectInput(
+inputId = "favourite_character",
+label = "Favourite Character",
+choices = c("Leia","Luke","Han")
+)
+
+#Render functions
+renderPrint()
+renderText()
+renderTable()
+renderDataTable()
+renderPlot()
+renderImage()
+renderUI()
+
+server <- function(input,output) {
+output$printed_object <- renderPrint({
+"print me"
+})
+}
+#printed_object is outputId
+
+#Output functions
+renderPrint() -- verbatimTextOutput(), textOutput()
+renderText() -- textOutput()
+renderTable() -- tableOutput()
+renderDataTable() -- dataTableOutput()
+renderPlot() -- plotOutput()
+renderImage() -- imageOutput()
+renderUI() -- uiOutput()
+
+textOutput("printed_object")
+
+#Add sliders to sidebar
+sidebar <- dashboardSidebar(
+  
+# Add a slider
+  
+sliderInput(
+  
+inputId = "height",
+  
+label = "Height",
+  
+min = 66,
+  
+max = 264,
+  
+value = 264
+  
+)
+
+)
+
+sidebar <- dashboardSidebar(
+  
+# Create a select list
+  
+selectInput(
+  
+inputId = "name",
+  
+label = "Name",
+  
+choices = starwars$name
+  
+)
+)
+
+
+body <- dashboardBody(
+  
+textOutput("name")
+)
+
+
+ui <- dashboardPage(
+header = dashboardHeader(),
+                    
+sidebar = sidebar,
+                    
+body = body
+                    
+)
+
+
+server <- function(input, output) {
+
+  output$name <- renderText({
+
+      input$name
+    
+})
+
+}
+
+
+
+shinyApp(ui, server)
+
+
+#server-side dynamic how-to
+#read real time data
+server <- function(input,output, session) {
+reactive_data <- reactiveFileReader(
+intervalMillis = 1000,
+session = session,
+filePath = "file.csv",
+readFunc = read.csv
+)
+}
+
+server <- function(input,output,session) {
+...
+output$printed_data <- renderPrint({
+reactive_data()
+})
+}
+
+server <- function(input, output, session) {
+
+  reactive_starwars_data <- reactiveFileReader(
+
+         intervalMillis = 1000,
+
+         session = session,
+
+         filePath = starwars_url,
+
+         readFunc = function(filePath) {
+ 
+           read.csv(url(filePath))
+
+         }
+
+  )
+
+}
+
+
+
+#optimising performance
+#outside the server function
+load("starwars.Rda")
+server <- function(input,output){
+}
+
+#inside the server function
+server <- function(input,output){
+load("starwars.Rda")
+} #inefficient as we only need to run the load function once
+
+
+#UI Dynamic how-to
+#dynamic dropdown menu
+messages <- apply(data,1,function(row){
+messageItem(from = row[["from"]], 
+message = row[["message"]])
+})
+dropdownMenu(type = "message", .list = messages)
+
+server <- function(input,output){
+output$msg_menu <- renderMenu({
+messages <- apply(data,1,function(row){
+messageItem(from = row[["from"]],
+message = row[["message"]])
+})
+dropdownMenu(type = "message", .list = messages)
+})
+}
+
+header <- dashboardHeader(dropdownMenuOutput("msg_menu"))
+
+#Dynamic boxes
+renderInfoBox() -- infoBoxOutput()
+renderValueBox() -- valueBoxOutput()
+
+#Bootstrap explanation
+#Bootstrap Layout
+box(
+width = 12,
+title = "This box takes up the whole row!",
+"A 12 column box."
+)
+
+#row-based layout
+fluidRow(
+box(
+width = 6,
+title = "This box takes up half a row!", "A 6 column box."
+),
+box(
+width = 6, title = "This box takes up half a row!","A 6 column box".
+)
+)
+
+#column-based layout
+fluidRow(
+column(width = 6,
+box(
+width = NULL,
+title = "This box takes up half a row!", "A 6 column box."
+)),
+column(width = 6, 
+box(
+width = NULL, title = "This box takes up half a row!","A 6 column box".
+)
+)
+)
+
+#mixed layout
+
+#Customising the appearance
+#Dashboard skins
+dashboardPage(skin = "green",
+header = header,
+sidebar = sidebar,
+body = body)
+
+#Icons, statuses, colours
+#Icons
+icon(name = "bicycle",
+lib = "font-awesome")
+
+icon(name = "refresh",
+class = "fa-5x fa-spin")
+
+#find more icons at http://fontawesome.io/icons/
+#find more icons examples at http://fontawesome.io/examples/
+# https://getbootstrap.com/components/
+
+#nasa
+library("shiny")
+
+max_vel <- max(nasa_fireball$vel, na.rm = TRUE)
+
+
+body <- dashboardBody(
+
+  fluidRow(
+
+    # Add a value box for maximum velocity
+
+    valueBox(
+
+      value = max_vel,
+
+      subtitle = "Maximum pre-impact velocity",
+ 
+      icon = icon("fire")
+
+    )
+
+  )
+
+#Dynamic refresher
+render*()
+*Output()
+leaflet : http://www.htmlwidgets.org
+
+#leaflet
+renderLeaflet()
+leafletOutput()
+
+#Maps
+library(leaflet)
+leaflet() %>%
+addTiles()
+
+library(leaflet)
+leaflet() %>%
+addTiles() %>%
+addMarkers(
+lng = nasa_fireball$lon,
+lat = nasa_fireball$lat
+)
+
+
+server <- function(input, output) {
+
+  output$plot <- renderLeaflet({
+
+    leaflet() %>%
+
+      addTiles() %>%
+  
+      addCircleMarkers(
+lng = nasa_fireball$lon,
+ lat = nasa_fireball$lat,
+ radius = log(nasa_fireball$impact_e),
+ label = nasa_fireball$date,
+ weight = 2)
+    })
+}
+
+
+body <- dashboardBody(
+ 
+ leafletOutput("plot")
+)
+
+
+#cool shiny dashboards
+# https://rstudio.github.io/shinydashboard/examples.html
+
+#videos
+# https://www.rstudio.com/resources/videos/building-dashboards-with-shiny-tutorial/
+
+#tutorial on https://www.freecodecamp.org/news/build-your-first-web-app-dashboard-using-shiny-and-r-ec433c9f3f6c/
+#create own dashboard
+
+library(shiny)
+library(shinydashboard)
+
+#empty dashboard
+header <- dashboardHeader()
+sidebar <- dashboardSidebar()
+body <- dashboardBody()
+
+#make user interface
+ui <- dashboardPage(header,sidebar,body)
+
+server <- function(input, output) {}
+shiny::shinyApp(ui, server)
+
+
+#dashboard header
+header <- dashboardHeader(title = "Remittance Performance")
+
+#sidebar
+sidebar <- dashboardSidebar(
+sidebarMenu(
+menuItem("Dashboard",tabName = "dashboard", icon = icon("dashboard"))
+)
+)
+
+
+
+
