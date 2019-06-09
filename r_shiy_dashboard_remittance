@@ -1,3 +1,23 @@
+##############################################################################################################################################
+#THE SCRIPT BELOW IS SAVED AS .TXT, TO DEPLOY SHINY APP from app.R FILE IN SAME DIRECTORY AS setwd() BELOW#
+#install.packages("rsconnect", repos="http://cran.us.r-project.org", dependencies = TRUE)
+library(rsconnect)
+
+#install.packages("digest", repos="http://cran.us.r-project.org")
+library(digest)
+
+
+setwd("C:\\Users\\P1318124\\Desktop\\BA Projects\\R ShinyDashboard\\use_deploy_shiny")
+
+rsconnect::setAccountInfo(name='akbarsingtel',
+			  token='0A4D25761E46F06DA1AD7CFE67C9FD7A',
+			  secret='********') #GET FROM SHINYAPPS.IO UNDER TOKENS TAB
+rsconnect::deployApp()
+
+###############################################################################################################################################
+#THE SCRIPT BELOW IS SAVED AS app.R, IN SAME DIRECTORY AS setwd() DEFINED ABOVE#
+#install.packages("rsconnect", repos="http://cran.us.r-project.org")
+library(rsconnect)
 library(shiny)
 library(shinydashboard)
 library(dplyr)
@@ -6,12 +26,12 @@ library(readxl)
 library(lubridate)
 library(reshape2)
 
-
-data <- read_excel("C:\\Users\\P1318124\\Desktop\\Remittance\\Daily Remittance\\daily_remittance.xlsx",2)
+#SHINY READS DATA ONLY FROM SAME DIRECTORY AS app.R i.e. FROM SAME DIRECTORY DEFINED IN ABOVE SCRIPT#
+data <- read_excel("daily_remittance.xlsx",2)
 
 #explore data
-sapply(data, class)
-sapply(data, anyNA)
+#sapply(data, class)
+#sapply(data, anyNA)
 
 
 
@@ -23,6 +43,9 @@ filter(month(TXN_DATE) == month(Sys.Date() - 1)) %>%
 filter(year(TXN_DATE) == year(Sys.Date() - 1)) %>%
 summarise(sum_tv_mtd = sum(NETT_SPENDS))
 
+sum_tv_mtd <- paste("$",round(sum_tv_mtd ,2),sep="")
+
+
 sum_tc_mtd <- data %>%
 filter(month(TXN_DATE) == month(Sys.Date() - 1)) %>%
 filter(year(TXN_DATE) == year(Sys.Date() - 1)) %>%
@@ -32,6 +55,8 @@ arpt_mtd <- data %>%
 filter(month(TXN_DATE) == month(Sys.Date() - 1)) %>%
 filter(year(TXN_DATE) == year(Sys.Date() - 1)) %>%
 summarise(arpt_mtd = sum(NETT_SPENDS)/sum(NETT_TRANSACTIONS))
+
+arpt_mtd <- paste("$",round(arpt_mtd ,2),sep="")
 
 data_day <- data %>%
 filter(ymd(TXN_DATE) >= Sys.Date()-32) %>%
@@ -48,24 +73,8 @@ data_day_corridor_tv <- data_day_corridor_tv[,-1]
 data_day_corridor_tc <- data_day_corridor_tc[,-1]
 
 header <- dashboardHeader()
-sidebar <- dashboardSidebar()
+sidebar <- dashboardSidebar(disable = TRUE)
 body <- dashboardBody()
-
-ui <- dashboardPage(header,sidebar,body)
-
-server <- function(input, output) {
-output$barchart_tv <- renderPlot({
-#barplot(data_day$NETT_SPENDS, names.arg = data_day$'ymd(TXN_DATE)', axes = TRUE, col = "purple")
-barplot(as.matrix(data_day_corridor_tv), col = terrain.colors(length(unique(data_day$CORRIDOR))), legend = TRUE, args.legend = list(bty = "n", x = "top", ncol = 2), ylim = c(0,max(data_day$NETT_SPENDS,na.rm=TRUE)+1000000))
-})
-output$barchart_tc <- renderPlot({
-#barplot(data_day$NETT_TRANSACTIONS, names.arg = data_day$'ymd(TXN_DATE)', axes = TRUE, col = "purple")
-barplot(as.matrix(data_day_corridor_tc), col = terrain.colors(length(unique(data_day$CORRIDOR))), legend = TRUE, args.legend = list(bty = "n", x = "top", ncol = 2), ylim = c(0,max(data_day$NETT_TRANSACTIONS,na.rm=TRUE)+5000))
-})
-}
-
-shiny::shinyApp(ui, server)
-
 
 body <- dashboardBody(
   
@@ -92,9 +101,9 @@ icon = icon("shopping-cart"))
 
 ),
 fluidRow( #Add barchart
-box(plotOutput("barchart_tv"))
+box(plotOutput("barchart_tv"), title = "Daily TV by Corridor")
 ,
-box(plotOutput("barchart_tc"))
+box(plotOutput("barchart_tc"), title = "Daily TC by Corridor")
 )
 
 
@@ -103,6 +112,22 @@ box(plotOutput("barchart_tc"))
 header <- dashboardHeader(
 title = "Remittance Performance Summary"
 )
+
+
+ui <- dashboardPage(header,sidebar,body)
+
+server <- function(input, output) {
+output$barchart_tv <- renderPlot({
+#barplot(data_day$NETT_SPENDS, names.arg = data_day$'ymd(TXN_DATE)', axes = TRUE, col = "purple")
+barplot(as.matrix(data_day_corridor_tv), col = terrain.colors(length(unique(data_day$CORRIDOR))), legend = TRUE, args.legend = list(bty = "n", x = "top", ncol = 2), ylim = c(0,max(data_day$NETT_SPENDS,na.rm=TRUE)+1000000))
+})
+output$barchart_tc <- renderPlot({
+#barplot(data_day$NETT_TRANSACTIONS, names.arg = data_day$'ymd(TXN_DATE)', axes = TRUE, col = "purple")
+barplot(as.matrix(data_day_corridor_tc), col = terrain.colors(length(unique(data_day$CORRIDOR))), legend = TRUE, args.legend = list(bty = "n", x = "top", ncol = 2), ylim = c(0,max(data_day$NETT_TRANSACTIONS,na.rm=TRUE)+5000))
+})
+}
+
+shiny::shinyApp(ui, server)
 
 
 
