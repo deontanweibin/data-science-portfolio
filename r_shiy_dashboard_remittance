@@ -26,8 +26,9 @@ library(readxl)
 library(lubridate)
 library(reshape2)
 
-#SHINY READS DATA ONLY FROM SAME DIRECTORY AS app.R i.e. FROM SAME DIRECTORY DEFINED IN ABOVE SCRIPT#
 data <- read_excel("daily_remittance.xlsx",2)
+
+log_file <- "C:\\Users\\P1318124\\Desktop\\BA Projects\\R ShinyDashboard\\use_deploy_shiny\\daily_remittance.xlsx"
 
 #explore data
 #sapply(data, class)
@@ -116,7 +117,26 @@ title = "Remittance Performance Summary"
 
 ui <- dashboardPage(header,sidebar,body)
 
-server <- function(input, output) {
+server <- function(input, output, session) {
+
+#data <- reactivePoll(1000, session, 
+#checkFunc = function(){
+#if(file.exists(log_file)){
+#file.info(log_file)$mtime[1]}
+#else{
+#""}
+#},
+#valueFunc = function() {
+#read_excel(log_file,1)
+#}
+#)
+
+#output$dataTable <- renderTable({
+#read_excel(log_file,2)
+
+#})
+
+
 output$barchart_tv <- renderPlot({
 #barplot(data_day$NETT_SPENDS, names.arg = data_day$'ymd(TXN_DATE)', axes = TRUE, col = "purple")
 barplot(as.matrix(data_day_corridor_tv), col = terrain.colors(length(unique(data_day$CORRIDOR))), legend = TRUE, args.legend = list(bty = "n", x = "top", ncol = 2), ylim = c(0,max(data_day$NETT_SPENDS,na.rm=TRUE)+1000000))
@@ -125,10 +145,18 @@ output$barchart_tc <- renderPlot({
 #barplot(data_day$NETT_TRANSACTIONS, names.arg = data_day$'ymd(TXN_DATE)', axes = TRUE, col = "purple")
 barplot(as.matrix(data_day_corridor_tc), col = terrain.colors(length(unique(data_day$CORRIDOR))), legend = TRUE, args.legend = list(bty = "n", x = "top", ncol = 2), ylim = c(0,max(data_day$NETT_TRANSACTIONS,na.rm=TRUE)+5000))
 })
+reactive_data <- reactiveFileReader(
+intervalMillis = 100,
+session = session,
+filePath = "daily_remittance.xlsx",
+readFunc = function(filePath){
+read_excel(filePath,2)
+}
+)
+
 }
 
 shiny::shinyApp(ui, server)
-
 
 
 
