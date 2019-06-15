@@ -1,0 +1,45 @@
+DESCRIBE EDWDM.TEDW_SINGCASH_ACCOUNT
+
+SELECT acct_id, dt_created, COUNT(txn_id) AS txn_count, txn_dt, brnd_grp, TO_CHAR(dt_created,'YYYY-MM') AS month_signup, TO_CHAR(txn_dt, 'YYYY-MM') AS month_txn, ROUND(MONTHS_BETWEEN(txn_dt,dt_created),0) AS diff_month
+FROM EDWDM.TEDW_SINGCASH_ACCOUNT a
+INNER JOIN EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM b
+ON a.acct_id = b.scr_acct_id
+WHERE acct_stat = 'A'
+AND layr_name LIKE '%Customers%'
+AND brnd_grp IS NOT NULL
+
+
+SELECT ROUND(MONTHS_BETWEEN(txn_dt,dt_created),0) AS diff_month, brnd_grp, COUNT(txn_id) AS txn_count
+FROM EDWDM.TEDW_SINGCASH_ACCOUNT a
+INNER JOIN EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM b
+ON a.acct_id = b.scr_acct_id
+WHERE acct_stat = 'A'
+AND layr_name LIKE '%Customers%'
+AND brnd_grp IS NOT NULL
+GROUP BY brnd_grp, ROUND(MONTHS_BETWEEN(txn_dt,dt_created),0)
+ORDER BY ROUND(MONTHS_BETWEEN(txn_dt,dt_created),0) ASC
+--export as cohort_analysis_15062019.csv 
+
+#R
+library(readxl)
+library(ggplot2)
+
+data <- read_excel("C:\\Users\\P1318124\\Desktop\\BA Projects\\Retail Analytics\\Cohort Analysis\\cohort_analysis_15062019.xlsx",1)
+
+data <- as.data.frame(data)
+str(data)
+summary(data)
+
+data$BRND_GRP <- as.factor(data$BRND_GRP)
+
+#dot plot colour by BRND_GRP
+p <- ggplot(data, aes(x=DIFF_MONTH, y=TXN_COUNT, fill=BRND_GRP)) +
+geom_dotplot(binaxis='y',stackdir='center')
+
+p
+
+
+
+
+
+
