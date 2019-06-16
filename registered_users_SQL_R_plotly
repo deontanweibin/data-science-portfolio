@@ -1,0 +1,42 @@
+--registered users
+--registered users
+SELECT TO_CHAR(dt_created,'Mon-YYYY') AS reg_month, acct_natly, COUNT(acct_id)
+FROM EDWDM.TEDW_SINGCASH_ACCOUNT
+WHERE layr_name LIKE '%Customers%'
+AND auto_signup = 0
+GROUP BY TO_CHAR(dt_created,'Mon-YYYY'), acct_natly
+--export as registered_users_16062019.xlsx
+
+
+#R 
+
+library(readxl)
+library(plotly)
+
+data <- read_excel("C:\\Users\\P1318124\\Desktop\\BA Projects\\Retail Analytics\\Registered Users\\registered_users_16062019.xlsx",1)
+
+head(data)
+
+str(data)
+
+summary(data)
+
+
+data$ACCT_NATLY <- as.factor(data$ACCT_NATLY)
+
+colnames(data)[3] <- 'reg_users'
+
+#plot with plotly
+library(plotly)
+
+t <- plot_ly(data = data, x = ~REG_MONTH, y = ~reg_users, color = ~ACCT_NATLY, type = 'bar') %>%
+layout(yaxis = list(title = 'Count'), barmode = 'stack')
+
+t
+
+
+
+
+
+
+
