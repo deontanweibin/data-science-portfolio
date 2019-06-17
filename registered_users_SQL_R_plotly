@@ -1,19 +1,38 @@
 --registered users
 --registered users
-SELECT TO_CHAR(dt_created,'Mon-YYYY') AS reg_month, acct_natly, COUNT(acct_id)
+SELECT reg_month, acct_natly2, COUNT(acct_id)
+FROM
+(SELECT TO_CHAR(dt_created,'Mon-YYYY') AS reg_month, acct_natly, acct_id,
+(CASE 
+WHEN acct_natly = 'PHILIPPINES' THEN 'PHILIPPINES'
+WHEN acct_natly = 'INDONESIA' THEN 'INDONESIA'
+WHEN acct_natly = 'BANGLADESH' THEN 'BANGLADESH'
+WHEN acct_natly = 'INDIA' THEN 'INDIA'
+WHEN acct_natly = 'CHINA' THEN 'CHINA'
+WHEN acct_natly = 'MYANMAR' THEN 'MYANMAR'
+WHEN acct_natly = 'THAILAND' THEN 'THAILAND'
+WHEN acct_natly = 'SINGAPORE' THEN 'SINGAPORE'
+WHEN acct_natly = 'MALAYSIA' THEN 'MALAYSIA'
+ELSE 'OTHERS' END) acct_natly2
 FROM EDWDM.TEDW_SINGCASH_ACCOUNT
 WHERE layr_name LIKE '%Customers%'
-AND auto_signup = 0
-GROUP BY TO_CHAR(dt_created,'Mon-YYYY'), acct_natly
---export as registered_users_16062019.xlsx
+AND auto_signup = 0)
+GROUP BY reg_month, acct_natly2
+--export as registered_users_16062019.xlsx OR registered_users.csv
 
 
 #R 
 
 library(readxl)
 library(plotly)
+library(data.table)
+library(lubridate)
 
-data <- read_excel("C:\\Users\\P1318124\\Desktop\\BA Projects\\Retail Analytics\\Registered Users\\registered_users_16062019.xlsx",1)
+
+#data <- read_excel("C:\\Users\\P1318124\\Desktop\\BA Projects\\Retail Analytics\\Registered Users\\registered_users_16062019.xlsx",1)
+data <- read.csv("C:\\Users\\P1318124\\Desktop\\BA Projects\\Retail Analytics\\Registered Users\\registered_users.csv",header=TRUE)
+
+
 
 head(data)
 
@@ -21,19 +40,45 @@ str(data)
 
 summary(data)
 
-
-data$ACCT_NATLY <- as.factor(data$ACCT_NATLY)
+data$ACCT_NATLY2<- as.factor(data$ACCT_NATLY2)
 
 colnames(data)[3] <- 'reg_users'
 
 #plot with plotly
 library(plotly)
 
-t <- plot_ly(data = data, x = ~REG_MONTH, y = ~reg_users, color = ~ACCT_NATLY, type = 'bar') %>%
+#chart_types
+chart_types  <- list(
+type = "buttons",
+direction = "right",
+xanchor = "center",
+yanchor = "top",
+pad = list('r'=0,'t'=10,'b'=10),
+x = 0.5,
+y = 0.93,
+buttons = list(
+list(method = "relayout",
+args = list("barmode","stack"),
+label = "Stacked Bar"),
+list(method = "relayout",
+args = list("barmode","group"),
+label = "Clustered Bar")
+)
+)
+
+t <- plot_ly(data = data, x = ~dmy(REG_MONTH), y = ~reg_users, color = ~ACCT_NATLY2, type = 'bar') %>%
 layout(yaxis = list(title = 'Count'), barmode = 'stack')
 
 t
 
+
+t2 <- plot_ly(data = data, x = ~dmy(REG_MONTH), y = ~reg_users, color = ~ACCT_NATLY2, type = "bar") %>%
+layout(title = "Number of Registered Users MoM by Nationality",
+yaxis = list(title = 'Number of Registered Users'),
+xaxis = list(title = "REGISTRATION_MONTH"), 
+updatemenus = list(chart_types))
+
+t2
 
 
 
