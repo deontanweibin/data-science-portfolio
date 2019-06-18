@@ -1,0 +1,30 @@
+
+WITH reg_users AS (
+SELECT TRUNC(txn_dt,'month') AS txn_month, COUNT(DISTINCT scr_acct_id) AS mau
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM
+WHERE brnd_grp = 'International Money Remittance'
+AND stat LIKE '%PST%'
+AND data_txn_rfnd = 'False'
+GROUP BY TRUNC(txn_dt,'month')
+ORDER BY txn_month ASC
+)
+SELECT txn_month, mau, COALESCE(LAG(mau) OVER (ORDER BY txn_month),0) AS lag_mau, SUM(mau) OVER (ORDER BY txn_month) AS mau_rt
+FROM reg_users
+ORDER BY txn_month ASC
+
+
+--MoM growth rate
+
+WITH reg_users AS (
+SELECT TRUNC(txn_dt,'month') AS txn_month, COUNT(DISTINCT scr_acct_id) AS mau
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM
+WHERE brnd_grp = 'International Money Remittance'
+AND stat LIKE '%PST%'
+AND data_txn_rfnd = 'False'
+GROUP BY TRUNC(txn_dt,'month')
+ORDER BY txn_month ASC
+)
+SELECT txn_month, mau, COALESCE(LAG(mau) OVER (ORDER BY txn_month),0) AS lag_mau, SUM(mau) OVER (ORDER BY txn_month) AS mau_rt, ROUND((TO_NUMBER(mau - COALESCE(LAG(mau) OVER (ORDER BY txn_month),1))/COALESCE(LAG(mau) OVER (ORDER BY txn_month),1))*100,2) AS growth
+FROM reg_users
+ORDER BY txn_month ASC
+
