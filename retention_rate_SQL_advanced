@@ -1,0 +1,17 @@
+
+WITH user_activity AS (
+SELECT DISTINCT TRUNC(txn_dt,'month') AS txn_month, scr_acct_id
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM
+WHERE brnd_grp = 'International Money Remittance'
+AND stat LIKE '%PST%'
+AND data_txn_rfnd = 'False'
+)
+SELECT previous.txn_month, COUNT(DISTINCT previous.scr_acct_id), COUNT(DISTINCT current2.scr_acct_id), ROUND(TO_NUMBER(COUNT(DISTINCT current2.scr_acct_id))/GREATEST(COUNT(DISTINCT previous.scr_acct_id),1),2) AS retention_rate
+FROM user_activity previous
+LEFT JOIN user_activity current2
+ON previous.scr_acct_id = current2.scr_acct_id
+AND previous.txn_month = (current2.txn_month - INTERVAL '1' MONTH)
+GROUP BY previous.txn_month
+ORDER BY previous.txn_month
+
+
