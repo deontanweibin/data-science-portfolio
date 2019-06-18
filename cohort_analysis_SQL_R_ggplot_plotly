@@ -39,6 +39,16 @@ geom_dotplot(binaxis='y',stackdir='center')
 p
 
 
+#plot with plotly
+library(plotly)
+
+t <- plot_ly(data = data, x = ~DIFF_MONTH, y = ~TXN_COUNT, color = ~BRND_GRP)
+t
+
+#deep dive on p2m transactions
+
+
+
 
 
 
