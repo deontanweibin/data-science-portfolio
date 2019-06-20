@@ -14,7 +14,7 @@ SELECT ROUND(TO_NUMBER(spends.sum_amt),-2) AS tier, spends.txn_month, spends.scr
 FROM spends)
  PIVOT
  (COUNT(DISTINCT scr_acct_id)
- FOR txn_month IN ('01/07/18','01/08/19','01/09/18','01/10/18','01/11/18','01/12/18','01/01/19','01/02/19','01/03/19','01/04/19','01/05/19'))
+ FOR txn_month IN ('01/07/18','01/08/18','01/09/18','01/10/18','01/11/18','01/12/18','01/01/19','01/02/19','01/03/19','01/04/19','01/05/19'))
  ORDER BY tier
  
  
