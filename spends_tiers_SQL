@@ -1,0 +1,17 @@
+WITH spends AS(
+SELECT scr_acct_id, TRUNC(txn_dt,'month') AS txn_month, SUM(orig_amt) AS sum_amt
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM
+GROUP BY scr_acct_id, TRUNC(txn_dt,'month')
+)
+
+SELECT * FROM
+(
+SELECT ROUND(TO_NUMBER(spends.sum_amt),-2) AS tier, spends.txn_month, spends.scr_acct_id
+FROM spends)
+ PIVOT
+ (COUNT(DISTINCT scr_acct_id)
+ FOR txn_month IN ('01/09/18','01/10/18','01/11/18','01/12/18','01/01/19','01/02/19','01/03/19'))
+ ORDER BY tier
+ 
+ 
+
