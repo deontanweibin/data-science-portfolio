@@ -1,10 +1,6 @@
 WITH spends AS(
 SELECT scr_acct_id, TRUNC(txn_dt,'month') AS txn_month, SUM(orig_amt) AS sum_amt
 FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM
-WHERE stat LIKE '%PST%'
-AND data_txn_rfnd = 'False'
-AND (svc_class_name LIKE '%P2M%'
-OR svc_class_name LIKE '%ISO8583%')
 GROUP BY scr_acct_id, TRUNC(txn_dt,'month')
 )
 
@@ -14,11 +10,12 @@ SELECT ROUND(TO_NUMBER(spends.sum_amt),-2) AS tier, spends.txn_month, spends.scr
 FROM spends)
  PIVOT
  (COUNT(DISTINCT scr_acct_id)
- FOR txn_month IN ('01/07/18','01/08/18','01/09/18','01/10/18','01/11/18','01/12/18','01/01/19','01/02/19','01/03/19','01/04/19','01/05/19'))
+ FOR txn_month IN ('01/09/18','01/10/18','01/11/18','01/12/18','01/01/19','01/02/19','01/03/19'))
  ORDER BY tier
  
- --version 2 with proper labels according to business
- WITH spends AS(
+ 
+--with proper labels according to Feline
+WITH spends AS(
 SELECT scr_acct_id, TRUNC(txn_dt,'month') AS txn_month, ROUND(TO_NUMBER(SUM(orig_amt)),0) AS sum_amt
 FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM
 WHERE stat LIKE '%PST%'
@@ -51,5 +48,54 @@ FROM spends)
  (COUNT(DISTINCT scr_acct_id)
  FOR txn_month IN ('01/07/18','01/08/18','01/09/18','01/10/18','01/11/18','01/12/18','01/01/19','01/02/19','01/03/19','01/04/19','01/05/19'))
  ORDER BY tier
+
+
+--tv, tc, uu shown 
+--with proper labels according to Feline
+WITH spends AS(
+SELECT scr_acct_id, TRUNC(txn_dt,'month') AS txn_month, ROUND(TO_NUMBER(SUM(orig_amt)),0) AS sum_amt, COUNT(orig_amt) AS txns
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM
+WHERE stat LIKE '%PST%'
+AND data_txn_rfnd = 'False'
+AND (svc_class_name LIKE '%P2M%'
+OR svc_class_name LIKE '%ISO8583%')
+GROUP BY scr_acct_id, TRUNC(txn_dt,'month')
+)
+
+SELECT * FROM
+(
+SELECT tier, txn_month, 
+--SUM(sum_amt) AS sum_amt 
+--SUM(txns) AS txns 
+COUNT(DISTINCT scr_acct_id) AS unique_users
+FROM
+(
+SELECT 
+(CASE
+WHEN sum_amt >= 1000 THEN '>=1000'
+WHEN sum_amt BETWEEN 900 AND 999 THEN '900-999'
+WHEN sum_amt BETWEEN 800 AND 899 THEN '800-899'
+WHEN sum_amt BETWEEN 700 AND 799 THEN '700-799'
+WHEN sum_amt BETWEEN 600 AND 699 THEN '600-699'
+WHEN sum_amt BETWEEN 500 AND 599 THEN '500-599'
+WHEN sum_amt BETWEEN 400 AND 499 THEN '400-499'
+WHEN sum_amt BETWEEN 300 AND 399 THEN '300-399'
+WHEN sum_amt BETWEEN 200 AND 299 THEN '200-299'
+WHEN sum_amt BETWEEN 100 AND 199 THEN '100-199'
+WHEN sum_amt BETWEEN 50 AND 99 THEN '50-99'
+WHEN sum_amt < 50 THEN '<50'
+ELSE '0'
+END) tier, spends.txn_month, spends.scr_acct_id, sum_amt, txns
+FROM spends)
+GROUP BY tier, txn_month)
+ PIVOT
+ (--SUM(sum_amt)
+  --SUM(txns)
+  SUM(unique_users)
+ FOR txn_month IN ('01/07/18','01/08/18','01/09/18','01/10/18','01/11/18','01/12/18','01/01/19','01/02/19','01/03/19','01/04/19','01/05/19','01/06/19'))
+ ORDER BY tier
+ 
+
+
 
  
