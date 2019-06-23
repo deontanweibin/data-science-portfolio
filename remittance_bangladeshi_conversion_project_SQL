@@ -1,0 +1,274 @@
+WITH user_activity AS (
+SELECT TRUNC(txn_dt,'month') AS txn_month, svc_class_name, COUNT(DISTINCT scr_acct_id) AS uu, SUM(orig_amt) AS sum_amt, COUNT(orig_amt) AS txns
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM a
+INNER JOIN EDWDM.TEDW_SINGCASH_ACCOUNT b
+ON a.scr_acct_id = b.acct_id
+WHERE stat LIKE '%PST%'
+AND data_txn_rfnd = 'False'
+AND dt_created BETWEEN TO_DATE('01-Nov-2018','DD-Mon-YYYY') AND TO_DATE('01-Jun-2019','DD-Mon-YYYY')
+AND acct_natly = 'BANGLADESH'
+GROUP BY TRUNC(txn_dt,'month'), svc_class_name
+)
+SELECT svc_class_name, SUM(sum_amt) AS sum_amt--, SUM(sum_amt) AS txns
+FROM user_activity
+--WHERE brnd_grp IS NOT NULL
+GROUP BY ROLLUP(svc_class_name)
+ORDER BY sum_amt DESC
+
+
+SELECT * --DISTINCT CHNL_ID 
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM 
+WHERE svc_class_name LIKE '%P2P%'
+AND dest_cust_id IS NOT NULL
+AND rownum <= 5
+
+SELECT * FROM EDWDM.TEDW_SINGCASH_ACCOUNT WHERE acct_name LIKE '%6596625369%'
+--9974, 6590307320
+--84, 6596625369
+
+SELECT * FROM EDWDM.TEDW_SINGCASH_ACCOUNT WHERE acct_id = '84'
+
+
+WITH user_activity AS (
+SELECT TRUNC(txn_dt,'month') AS txn_month, svc_class_name, scr_acct_id, dest_cust_id, orig_amt
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM a
+INNER JOIN EDWDM.TEDW_SINGCASH_ACCOUNT b
+ON a.scr_acct_id = b.acct_id
+WHERE stat LIKE '%PST%'
+AND data_txn_rfnd = 'False'
+AND dt_created BETWEEN TO_DATE('01-Nov-2018','DD-Mon-YYYY') AND TO_DATE('01-Jun-2019','DD-Mon-YYYY')
+AND acct_natly = 'BANGLADESH'
+AND svc_class_name LIKE '%P2P%'
+)
+SELECT acct_natly, SUM(a.orig_amt) AS sum_amt
+FROM user_activity a
+INNER JOIN EDWDM.TEDW_SINGCASH_ACCOUNT b
+ON a.dest_cust_id = b.acct_id
+GROUP BY ROLLUP (acct_natly)
+ORDER BY sum_amt DESC
+
+WITH user_activity AS (
+SELECT TRUNC(txn_dt,'month') AS txn_month, svc_class_name, scr_acct_id
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM a
+INNER JOIN EDWDM.TEDW_SINGCASH_ACCOUNT b
+ON a.scr_acct_id = b.acct_id
+WHERE stat LIKE '%PST%'
+AND data_txn_rfnd = 'False'
+AND dt_created BETWEEN TO_DATE('01-Nov-2018','DD-Mon-YYYY') AND TO_DATE('01-Jun-2019','DD-Mon-YYYY')
+AND acct_natly = 'BANGLADESH'
+)
+SELECT is_remit, COUNT(DISTINCT scr_acct_id)
+FROM
+(
+SELECT DISTINCT scr_acct_id,
+(CASE WHEN scr_acct_id IN ( SELECT DISTINCT scr_acct_id FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM WHERE brnd_grp = 'International Money Remittance' AND stat LIKE '%PST%' AND data_txn_rfnd = 'False') THEN 'Remitted'
+ELSE 'Not remitted' END) is_remit
+FROM user_activity )
+GROUP BY is_remit
+
+
+
+WITH user_activity AS (
+SELECT TRUNC(txn_dt,'month') AS txn_month, svc_class_name, SUM(orig_amt) AS sum_amt, COUNT(orig_amt) AS txns, COUNT(DISTINCT scr_acct_id) AS uu
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM a
+INNER JOIN EDWDM.TEDW_SINGCASH_ACCOUNT b
+ON a.scr_acct_id = b.acct_id
+WHERE stat LIKE '%PST%'
+AND data_txn_rfnd = 'False'
+AND dt_created BETWEEN TO_DATE('01-Nov-2018','DD-Mon-YYYY') AND TO_DATE('01-Jun-2019','DD-Mon-YYYY')
+AND acct_natly = 'BANGLADESH'
+AND scr_acct_id NOT IN ( SELECT DISTINCT scr_acct_id FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM WHERE brnd_grp = 'International Money Remittance' AND stat LIKE '%PST%' AND data_txn_rfnd = 'False')
+GROUP BY TRUNC(txn_dt,'month'), svc_class_name
+)
+SELECT svc_class_name, SUM(sum_amt) AS sum_amt--, SUM(sum_amt) AS txns
+FROM user_activity
+--WHERE brnd_grp IS NOT NULL
+GROUP BY ROLLUP(svc_class_name)
+ORDER BY sum_amt DESC
+
+
+WITH user_activity AS (
+SELECT TRUNC(txn_dt,'month') AS txn_month, svc_class_name, scr_acct_id, dest_cust_id, orig_amt
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM a
+INNER JOIN EDWDM.TEDW_SINGCASH_ACCOUNT b
+ON a.scr_acct_id = b.acct_id
+WHERE stat LIKE '%PST%'
+AND data_txn_rfnd = 'False'
+AND dt_created BETWEEN TO_DATE('01-Nov-2018','DD-Mon-YYYY') AND TO_DATE('01-Jun-2019','DD-Mon-YYYY')
+AND acct_natly = 'BANGLADESH'
+AND svc_class_name LIKE '%P2P%'
+AND scr_acct_id NOT IN ( SELECT DISTINCT scr_acct_id FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM WHERE brnd_grp = 'International Money Remittance' AND stat LIKE '%PST%' AND data_txn_rfnd = 'False')
+
+)
+SELECT acct_natly, SUM(a.orig_amt) AS sum_amt
+FROM user_activity a
+INNER JOIN EDWDM.TEDW_SINGCASH_ACCOUNT b
+ON a.dest_cust_id = b.acct_id
+GROUP BY ROLLUP (acct_natly)
+ORDER BY sum_amt DESC
+
+WITH user_activity AS (
+SELECT TRUNC(txn_dt,'month') AS txn_month, svc_class_name, scr_acct_id, dest_cust_id, orig_amt
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM a
+INNER JOIN EDWDM.TEDW_SINGCASH_ACCOUNT b
+ON a.scr_acct_id = b.acct_id
+WHERE stat LIKE '%PST%'
+AND data_txn_rfnd = 'False'
+AND dt_created BETWEEN TO_DATE('01-Nov-2018','DD-Mon-YYYY') AND TO_DATE('01-Jun-2019','DD-Mon-YYYY')
+AND acct_natly = 'BANGLADESH'
+AND svc_class_name LIKE '%P2P%'
+AND scr_acct_id IN ( SELECT DISTINCT scr_acct_id FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM WHERE brnd_grp = 'International Money Remittance' AND stat LIKE '%PST%' AND data_txn_rfnd = 'False')
+
+)
+SELECT acct_natly, SUM(a.orig_amt) AS sum_amt
+FROM user_activity a
+INNER JOIN EDWDM.TEDW_SINGCASH_ACCOUNT b
+ON a.dest_cust_id = b.acct_id
+GROUP BY ROLLUP (acct_natly)
+ORDER BY sum_amt DESC
+
+
+WITH user_activity AS (
+SELECT TRUNC(txn_dt,'month') AS txn_month, svc_class_name, SUM(orig_amt) AS sum_amt, COUNT(orig_amt) AS txns, COUNT(DISTINCT scr_acct_id) AS uu
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM a
+INNER JOIN EDWDM.TEDW_SINGCASH_ACCOUNT b
+ON a.scr_acct_id = b.acct_id
+WHERE stat LIKE '%PST%'
+AND data_txn_rfnd = 'False'
+AND dt_created BETWEEN TO_DATE('01-Nov-2018','DD-Mon-YYYY') AND TO_DATE('01-Jun-2019','DD-Mon-YYYY')
+AND acct_natly = 'BANGLADESH'
+AND scr_acct_id IN ( SELECT DISTINCT scr_acct_id FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM WHERE brnd_grp = 'International Money Remittance' AND stat LIKE '%PST%' AND data_txn_rfnd = 'False')
+GROUP BY TRUNC(txn_dt,'month'), svc_class_name
+)
+SELECT svc_class_name, SUM(sum_amt) AS sum_amt--, SUM(sum_amt) AS txns
+FROM user_activity
+--WHERE brnd_grp IS NOT NULL
+GROUP BY ROLLUP(svc_class_name)
+ORDER BY sum_amt DESC
+
+
+
+WITH user_activity AS (
+SELECT acct_vfy_lvl, acct_trst_lvl, scr_acct_id
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM a
+INNER JOIN EDWDM.TEDW_SINGCASH_ACCOUNT b
+ON a.scr_acct_id = b.acct_id
+WHERE stat LIKE '%PST%'
+AND data_txn_rfnd = 'False'
+AND dt_created BETWEEN TO_DATE('01-Nov-2018','DD-Mon-YYYY') AND TO_DATE('01-Jun-2019','DD-Mon-YYYY')
+AND acct_natly = 'BANGLADESH'
+AND scr_acct_id IN ( SELECT DISTINCT scr_acct_id FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM WHERE brnd_grp = 'International Money Remittance' AND stat LIKE '%PST%' AND data_txn_rfnd = 'False')
+)
+SELECT --acct_trst_lvl,
+acct_vfy_lvl,
+COUNT(DISTINCT scr_acct_id)
+FROM user_activity
+--WHERE brnd_grp IS NOT NULL
+GROUP BY acct_vfy_lvl
+--acct_trst_lvl
+
+
+WITH user_activity AS (
+SELECT acct_vfy_lvl, acct_trst_lvl, scr_acct_id
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM a
+INNER JOIN EDWDM.TEDW_SINGCASH_ACCOUNT b
+ON a.scr_acct_id = b.acct_id
+WHERE stat LIKE '%PST%'
+AND data_txn_rfnd = 'False'
+AND dt_created BETWEEN TO_DATE('01-Nov-2018','DD-Mon-YYYY') AND TO_DATE('01-Jun-2019','DD-Mon-YYYY')
+AND acct_natly = 'BANGLADESH'
+AND scr_acct_id NOT IN ( SELECT DISTINCT scr_acct_id FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM WHERE brnd_grp = 'International Money Remittance' AND stat LIKE '%PST%' AND data_txn_rfnd = 'False')
+)
+SELECT --acct_trst_lvl,
+acct_vfy_lvl,
+COUNT(DISTINCT scr_acct_id)
+FROM user_activity
+--WHERE brnd_grp IS NOT NULL
+GROUP BY acct_vfy_lvl
+--acct_trst_lvl
+
+
+
+WITH user_activity AS (
+SELECT TRUNC(txn_dt,'month') AS txn_month, svc_class_name, scr_acct_id, dest_cust_id, orig_amt
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM a
+INNER JOIN EDWDM.TEDW_SINGCASH_ACCOUNT b
+ON a.scr_acct_id = b.acct_id
+WHERE stat LIKE '%PST%'
+AND data_txn_rfnd = 'False'
+AND dt_created BETWEEN TO_DATE('01-Nov-2018','DD-Mon-YYYY') AND TO_DATE('01-Jun-2019','DD-Mon-YYYY')
+AND acct_natly = 'BANGLADESH'
+AND svc_class_name LIKE '%P2P%'
+AND scr_acct_id IN ( SELECT DISTINCT scr_acct_id FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM WHERE brnd_grp = 'International Money Remittance' AND stat LIKE '%PST%' AND data_txn_rfnd = 'False')
+
+)
+SELECT acct_vfy_lvl, SUM(a.orig_amt) AS sum_amt
+FROM user_activity a
+INNER JOIN EDWDM.TEDW_SINGCASH_ACCOUNT b
+ON a.dest_cust_id = b.acct_id
+GROUP BY ROLLUP (acct_vfy_lvl)
+ORDER BY sum_amt DESC
+
+
+WITH user_activity AS (
+SELECT TRUNC(txn_dt,'month') AS txn_month, svc_class_name, scr_acct_id, dest_cust_id, orig_amt
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM a
+INNER JOIN EDWDM.TEDW_SINGCASH_ACCOUNT b
+ON a.scr_acct_id = b.acct_id
+WHERE stat LIKE '%PST%'
+AND data_txn_rfnd = 'False'
+AND dt_created BETWEEN TO_DATE('01-Nov-2018','DD-Mon-YYYY') AND TO_DATE('01-Jun-2019','DD-Mon-YYYY')
+AND acct_natly = 'BANGLADESH'
+AND svc_class_name LIKE '%P2P%'
+AND scr_acct_id NOT IN ( SELECT DISTINCT scr_acct_id FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM WHERE brnd_grp = 'International Money Remittance' AND stat LIKE '%PST%' AND data_txn_rfnd = 'False')
+
+)
+SELECT acct_vfy_lvl, SUM(a.orig_amt) AS sum_amt
+FROM user_activity a
+INNER JOIN EDWDM.TEDW_SINGCASH_ACCOUNT b
+ON a.dest_cust_id = b.acct_id
+GROUP BY ROLLUP (acct_vfy_lvl)
+
+
+
+WITH user_activity AS (
+SELECT TRUNC(txn_dt,'month') AS txn_month, svc_class_name, scr_acct_id, dest_cust_id, orig_amt
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM a
+INNER JOIN EDWDM.TEDW_SINGCASH_ACCOUNT b
+ON a.scr_acct_id = b.acct_id
+WHERE stat LIKE '%PST%'
+AND data_txn_rfnd = 'False'
+AND dt_created BETWEEN TO_DATE('01-Nov-2018','DD-Mon-YYYY') AND TO_DATE('01-Jun-2019','DD-Mon-YYYY')
+AND acct_natly = 'BANGLADESH'
+AND svc_class_name LIKE '%P2P%'
+AND scr_acct_id NOT IN ( SELECT DISTINCT scr_acct_id FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM WHERE brnd_grp = 'International Money Remittance' AND stat LIKE '%PST%' AND data_txn_rfnd = 'False')
+
+)
+SELECT acct_vfy_lvl, acct_natly, SUM(a.orig_amt) AS sum_amt
+FROM user_activity a
+INNER JOIN EDWDM.TEDW_SINGCASH_ACCOUNT b
+ON a.dest_cust_id = b.acct_id
+GROUP BY acct_vfy_lvl, acct_natly
+ORDER BY acct_vfy_lvl, acct_natly
+
+
+
+WITH user_activity AS (
+SELECT TRUNC(txn_dt,'month') AS txn_month, svc_class_name, scr_acct_id, dest_cust_id, orig_amt
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM a
+INNER JOIN EDWDM.TEDW_SINGCASH_ACCOUNT b
+ON a.scr_acct_id = b.acct_id
+WHERE stat LIKE '%PST%'
+AND data_txn_rfnd = 'False'
+AND dt_created BETWEEN TO_DATE('01-Nov-2018','DD-Mon-YYYY') AND TO_DATE('01-Jun-2019','DD-Mon-YYYY')
+AND acct_natly = 'BANGLADESH'
+AND svc_class_name LIKE '%P2P%'
+AND scr_acct_id IN ( SELECT DISTINCT scr_acct_id FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM WHERE brnd_grp = 'International Money Remittance' AND stat LIKE '%PST%' AND data_txn_rfnd = 'False')
+
+)
+SELECT acct_vfy_lvl, acct_natly, SUM(a.orig_amt) AS sum_amt
+FROM user_activity a
+INNER JOIN EDWDM.TEDW_SINGCASH_ACCOUNT b
+ON a.dest_cust_id = b.acct_id
+GROUP BY acct_vfy_lvl, acct_natly
+ORDER BY acct_vfy_lvl, acct_natly
