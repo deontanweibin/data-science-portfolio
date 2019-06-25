@@ -1,0 +1,44 @@
+--KYC weekly
+SELECT TRUNC(dt_vfyd) AS date_vfyd,acct_natly, COUNT(DISTINCT acct_id) AS uu
+FROM EDWDM.TEDW_SINGCASH_ACCOUNT
+WHERE layr_name LIKE '%Customers%'
+AND auto_signup = 0
+AND acct_vfy_lvl LIKE '%Remittance%'
+AND dt_vfyd >= SYSDATE - 7
+GROUP BY ROLLUP(TRUNC(dt_vfyd), acct_natly)
+ORDER BY date_vfyd, acct_natly ASC; 
+
+--first remittance
+WITH first_remits AS 
+(SELECT MIN(txn_id) AS first_remit_id, scr_acct_id
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM
+WHERE brnd_grp = 'International Money Remittance'
+AND stat LIKE '%PST%'
+AND data_txn_rfnd = 'False'
+GROUP BY scr_acct_id)
+SELECT TRUNC(txn_dt) AS txn_date,svc_class_name, COUNT(DISTINCT first_remits.scr_acct_id) AS uu
+FROM first_remits
+INNER JOIN EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM a
+ON first_remit_id = a.txn_id
+AND txn_dt >= SYSDATE - 7
+GROUP BY ROLLUP(TRUNC(txn_dt), svc_class_name)
+ORDER BY txn_date, svc_class_name ASC;
+
+--first remittance GA
+WITH first_remits AS 
+(SELECT MIN(a.txn_id) AS first_remit_id, a.scr_acct_id
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM a
+INNER JOIN EDWDM.TEDW_SINGCASH_SALESJOURNAL_HUB b
+ON a.txn_id = b.scr_ref
+WHERE a.brnd_grp = 'International Money Remittance'
+AND a.stat LIKE '%PST%'
+AND a.data_txn_rfnd = 'False'
+AND (b.SRC_DEBIT + b.FX_MARGIN) >= 100 --GA
+GROUP BY a.scr_acct_id)
+SELECT TRUNC(txn_dt) AS txn_date,svc_class_name, COUNT(DISTINCT first_remits.scr_acct_id) AS uu
+FROM first_remits
+INNER JOIN EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM a
+ON first_remit_id = a.txn_id
+AND txn_dt >= SYSDATE - 7
+GROUP BY ROLLUP(TRUNC(txn_dt), svc_class_name)
+ORDER BY txn_date, svc_class_name ASC;
