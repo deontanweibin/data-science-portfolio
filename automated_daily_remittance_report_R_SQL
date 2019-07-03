@@ -1,0 +1,149 @@
+
+
+#save below file as .R into a path (directory) with NO SPACES in between else task scheduler will NOT run .R script
+library(RJDBC)
+library(dbplyr)
+library(dplyr)
+library(sqldf)
+library(openxlsx)
+library(readxl)
+library(lubridate)
+library(reshape2)
+library(xlsx)
+
+
+
+    jdbcDriver <- JDBC("oracle.jdbc.OracleDriver", classPath = "C:\\Users\\P1318124\\Downloads\\ojdbc6.jar")
+
+    conn <- dbConnect(jdbcDriver, "jdbc:oracle:thin:@//__________/______", "username", "password")
+dbListTables(conn)
+
+
+data <- dbReadTable(conn, "TEDW_SINGCASH_SALESJOURNAL_DOM")
+
+
+remit <- dbGetQuery(conn, paste("SELECT CORRIDOR,svc_class_name, txn_date, Nett_Spends, Nett_Transactions
+FROM
+(
+SELECT SUM(Nett_Spends) AS Nett_Spends, COUNT(Nett_Spends) AS Nett_Transactions, txn_date, day, month, year, CORRIDOR, svc_class_name
+FROM
+(
+SELECT b.CUST_MSISDN,a.SRC_DEBIT + FX_MARGIN AS Nett_Spends, to_char(a.TXN_DT,'DD-Mon-YYYY') AS txn_date,to_char(a.TXN_DT,'DD') AS day, to_char(a.TXN_DT,'MM') AS month, to_char(a.TXN_DT,'YYYY') AS year, b.svc_class_name,
+(CASE 
+WHEN b.SVC_CLASS_NAME LIKE '%Philippines%' OR b.SVC_CLASS_NAME LIKE '%GCash%'
+    THEN 'PHILIPPINES'
+WHEN b.SVC_CLASS_NAME LIKE '%Telkomsel%' OR b.SVC_CLASS_NAME LIKE '%Delima%' OR b.SVC_CLASS_NAME LIKE '%Indonesia%'
+    THEN 'INDONESIA'
+WHEN b.SVC_CLASS_NAME LIKE '%bKash%' OR b.SVC_CLASS_NAME LIKE '%Bangladesh%'
+    THEN 'BANGLADESH'
+WHEN b.SVC_CLASS_NAME LIKE '%India%'
+    THEN 'INDIA'
+WHEN b.SVC_CLASS_NAME LIKE '%China%'
+    THEN 'CHINA'
+WHEN b.SVC_CLASS_NAME LIKE '%Myanmar%'
+    THEN 'MYANMAR'
+END) CORRIDOR
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_HUB a
+INNER JOIN EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM b
+ON a.scr_ref = b.txn_id
+WHERE a.STAT LIKE '%PST%'
+AND b.CUST_MSISDN != '6583381170' 
+AND b.CUST_MSISDN != '6597727199'
+AND b.CUST_MSISDN != '6596510899'
+And b.data_txn_rfnd = 'False'
+AND a.TXN_DT >= TO_DATE('01-Apr-2018','DD-Mon-YYYY')
+)
+GROUP BY txn_date, day, month, year, CORRIDOR, svc_class_name
+ORDER BY year, month, day, CORRIDOR, svc_class_name
+) "))
+
+remit$TXN_DATE <- dmy(remit$TXN_DATE)
+remit$CORRIDOR_SVC_CLASS_NAME <- paste(remit$CORRIDOR,remit$SVC_CLASS_NAME,sep='-')
+
+
+remit_pivot_spends <- dcast(remit, CORRIDOR_SVC_CLASS_NAME ~ TXN_DATE, value.var = "NETT_SPENDS", fun.aggregate = sum)
+remit_pivot_spends <- remit_pivot_spends[order(remit_pivot_spends$CORRIDOR_SVC_CLASS_NAME),]
+
+remit_pivot_txns <- dcast(remit, CORRIDOR_SVC_CLASS_NAME ~ TXN_DATE, value.var = "NETT_TRANSACTIONS", fun.aggregate = sum)
+remit_pivot_txns <- remit_pivot_txns[order(remit_pivot_txns$CORRIDOR_SVC_CLASS_NAME),]
+
+
+xlsx::write.xlsx(remit,"C:\\Users\\P1318124\\Desktop\\Remittance\\daily_remittance_R.xlsx",sheetName= "remit", row.names=FALSE, append=FALSE)
+xlsx::write.xlsx(remit_pivot_spends,"C:\\Users\\P1318124\\Desktop\\Remittance\\daily_remittance_R.xlsx",sheetName= "remit_pivot_spends", row.names=FALSE, append=TRUE)
+xlsx::write.xlsx(remit_pivot_txns,"C:\\Users\\P1318124\\Desktop\\Remittance\\daily_remittance_R.xlsx",sheetName= "remit_pivot_txns", row.names=FALSE, append=TRUE)
+
+prepaid <- dbGetQuery(conn, paste("
+SELECT BRAND_CATEGORY_NAME, txn_date, SUM(Nett_Spends) AS Nett_Spends, SUM(Nett_Transactions) AS Nett_Transactions
+FROM
+(
+SELECT brnd_grp AS BRAND_CATEGORY_NAME, to_char(txn_dt,'DD-Mon-YYYY') AS txn_date,to_char(txn_dt,'DD') AS day,to_char(txn_dt,'MM') AS month,to_char(txn_dt,'YYYY') AS year, SUM(orig_amt)AS Nett_Spends, COUNT(orig_amt) AS Nett_Transactions
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM a
+LEFT JOIN EDWDM.TEDW_SINGCASH_ACCOUNT b
+ON a.scr_acct_id = b.acct_id
+WHERE stat LIKE '%PST%'
+AND data_txn_rfnd IN ('False', 'FALSE')
+AND b.acct_msisdn NOT IN ('6583381170','6597727199','6596510899')
+AND brnd_grp_id IN ('1','12')
+AND brnd_grp LIKE '%Prepaid Topup%'
+--AND brand_category_name LIKE '%Prepaid Topup%'
+AND txn_dt >= TO_DATE('01-Apr-2018','DD-Mon-YYYY')
+GROUP BY brnd_grp, to_char(txn_dt,'DD-Mon-YYYY'),to_char(txn_dt,'DD'),to_char(txn_dt,'MM'),to_char(txn_dt,'YYYY')
+)
+GROUP BY txn_date, day, month, year, BRAND_CATEGORY_NAME
+ORDER BY year, month, day, BRAND_CATEGORY_NAME "))
+
+prepaid$TXN_DATE <- dmy(prepaid$TXN_DATE)
+
+prepaid_pivot_spends <- dcast(prepaid, BRAND_CATEGORY_NAME ~ TXN_DATE, value.var = "NETT_SPENDS", fun.aggregate = sum)
+prepaid_pivot_spends <- prepaid_pivot_spends[order(prepaid_pivot_spends$BRAND_CATEGORY_NAME),]
+
+prepaid_pivot_txns <- dcast(prepaid, BRAND_CATEGORY_NAME ~ TXN_DATE, value.var = "NETT_TRANSACTIONS", fun.aggregate = sum)
+prepaid_pivot_txns <- prepaid_pivot_txns[order(prepaid_pivot_txns$BRAND_CATEGORY_NAME),]
+
+
+xlsx::write.xlsx(prepaid,"C:\\Users\\P1318124\\Desktop\\Remittance\\daily_remittance_R.xlsx",sheetName= "prepaid", row.names=FALSE, append=TRUE)
+xlsx::write.xlsx(prepaid_pivot_spends,"C:\\Users\\P1318124\\Desktop\\Remittance\\daily_remittance_R.xlsx",sheetName= "prepaid_pivot_spends", row.names=FALSE, append=TRUE)
+xlsx::write.xlsx(prepaid_pivot_txns,"C:\\Users\\P1318124\\Desktop\\Remittance\\daily_remittance_R.xlsx",sheetName= "prepaid_pivot_txns", row.names=FALSE, append=TRUE)
+
+
+iat <- dbGetQuery(conn, paste("SELECT TXN_DATE, Nett_Spends, Nett_Transactions
+FROM
+(
+SELECT to_char(txn_dt,'DD-Mon-YYYY') AS TXN_DATE,to_char(txn_dt,'DD') AS DAY ,to_char(txn_dt,'YYYY') AS YEAR,to_char(txn_dt,'MM') AS Month,  SUM(orig_amt) AS Nett_Spends, COUNT(orig_amt) AS Nett_Transactions
+FROM EDWDM.TEDW_SINGCASH_SALESJOURNAL_DOM
+WHERE svc_class_name = 'OnePay Payment'
+      and stat LIKE '%PST%'
+      and extra_info1 = '08993385'
+      and orig_amt > 0.09
+      and data_txn_rfnd = 'False'
+ --iat
+AND acct_MSISDN != '6583381170' 
+AND acct_MSISDN != '6597727199'
+AND acct_MSISDN != '6596510899'
+AND txn_dt >= TO_DATE('01-Apr-2018','DD-Mon-YYYY')
+GROUP BY to_char(txn_dt,'DD-Mon-YYYY') ,to_char(txn_dt,'DD')  ,to_char(txn_dt,'YYYY'),to_char(txn_dt,'MM')
+ORDER BY YEAR, MONTH, DAY
+)"))
+
+iat$TXN_DATE <- dmy(iat$TXN_DATE)
+
+
+xlsx::write.xlsx(iat,"C:\\Users\\P1318124\\Desktop\\Remittance\\daily_remittance_R.xlsx",sheetName= "iat", row.names=FALSE, append=TRUE)
+xlsx::write.xlsx(iat,"C:\\Users\\P1318124\\Desktop\\Remittance\\daily_remittance_R.xlsx",sheetName= "iat2", row.names=FALSE, append=TRUE)
+
+##################
+
+#save below file for task scheduler
+
+library(taskscheduleR)
+
+#daily remittance
+
+myscript <- "C:\\Users\\P1318124\\Desktop\\Remittance\\rjdbc_r_oracle_connection.r"
+taskscheduler_create(taskname="myfancyscript",rscript=myscript,schedule="DAILY",starttime="09:00")
+
+#for more details, go to Windows Start, then search 'Task Scheduler' especially to delete task etc (can do in R too with taskscheduler_delete())
+#ensure laptop is connected to server before scheduled time ie 9am
+
+
+
